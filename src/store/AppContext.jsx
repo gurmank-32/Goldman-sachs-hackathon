@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -17,6 +18,78 @@ const AuthContext = createContext(null);
 
 const SESSION_KEY = "nestegg_session";
 const USERS_KEY = "nestegg_users";
+export const ONBOARDING_COMPLETE_KEY = "nestegg_onboarding_complete";
+
+/** Shown anywhere a user’s name is missing (session/UI fallbacks). */
+export const DEFAULT_DISPLAY_NAME = "Investor";
+
+const PASSWORD_SALT = "nestegg_salt";
+
+/** Demo-local encoding — not real cryptography; avoids plaintext in localStorage. */
+export function hashPassword(password) {
+  return btoa(String(password) + PASSWORD_SALT);
+}
+
+export function profileStorageKey(email) {
+  const key = String(email ?? "")
+    .trim()
+    .toLowerCase();
+  return `nestegg_profile_${key}`;
+}
+
+function readPersistedProfileBundle(email) {
+  if (!email) return null;
+  try {
+    const raw = localStorage.getItem(profileStorageKey(email));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data && typeof data === "object" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+function computeInitialAppState() {
+  const sessionUser = readSessionUser();
+  const onboardingComplete =
+    localStorage.getItem(ONBOARDING_COMPLETE_KEY) === "true";
+
+  let userProfile = {
+    name: sessionUser?.name ?? DEFAULT_DISPLAY_NAME,
+    riskScore: null,
+    riskLabel: initialRiskLabelFromPortfolio(alexChenPortfolio),
+  };
+  let selectedGoal = null;
+  let riskProfileState = null;
+
+  if (sessionUser?.email && onboardingComplete) {
+    const p = readPersistedProfileBundle(sessionUser.email);
+    if (p) {
+      if (p.goal != null) selectedGoal = p.goal;
+      if (p.riskLabel !== undefined) userProfile.riskLabel = p.riskLabel;
+      if (p.riskScore !== undefined) userProfile.riskScore = p.riskScore;
+      userProfile.name =
+        sessionUser.name?.trim() || DEFAULT_DISPLAY_NAME;
+      if (p.riskProfile !== undefined) riskProfileState = p.riskProfile;
+    }
+  } else if (sessionUser) {
+    userProfile.name =
+      sessionUser.name?.trim() || DEFAULT_DISPLAY_NAME;
+  }
+
+  return {
+    userProfile,
+    selectedGoal,
+    riskProfile: riskProfileState,
+  };
+}
+
+/** Thrown from signIn — map to user-facing copy in SignIn. */
+export const SIGN_IN_ERROR_EMAIL_NOT_FOUND = "SIGN_IN_EMAIL_NOT_FOUND";
+export const SIGN_IN_ERROR_WRONG_PASSWORD = "SIGN_IN_WRONG_PASSWORD";
+
+export const DEMO_ACCOUNT_EMAIL = "alex@nestegg.demo";
+export const DEMO_ACCOUNT_PASSWORD = "Demo1234!";
 
 function delay(ms) {
   return new Promise((resolve) => {
@@ -79,18 +152,34 @@ function initialRiskLabelFromPortfolio(portfolio) {
 export function AppProvider({ children }) {
   const navigate = useNavigate();
 
-  const [userProfile, setUserProfile] = useState({
-    name: alexChenPortfolio.user.name,
-    riskScore: null,
-    riskLabel: initialRiskLabelFromPortfolio(alexChenPortfolio),
-  });
-  const [selectedGoal, setSelectedGoal] = useState(null);
+  const initialApp = computeInitialAppState();
+
+  const [userProfile, setUserProfile] = useState(initialApp.userProfile);
+  const [selectedGoal, setSelectedGoal] = useState(initialApp.selectedGoal);
   const [selectedScenario, setSelectedScenario] = useState(null);
-  const [riskProfile, setRiskProfile] = useState(null);
+  const [riskProfile, setRiskProfile] = useState(initialApp.riskProfile);
 
   const [currentUser, setCurrentUser] = useState(() => readSessionUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!readSessionUser());
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const email = currentUser?.email;
+    if (!email) return;
+    if (localStorage.getItem(ONBOARDING_COMPLETE_KEY) !== "true") return;
+    const p = readPersistedProfileBundle(email);
+    if (!p) return;
+    setSelectedGoal(p.goal ?? null);
+    setUserProfile((prev) => ({
+      ...prev,
+      name: currentUser.name || DEFAULT_DISPLAY_NAME,
+      riskLabel:
+        p.riskLabel !== undefined ? p.riskLabel : prev.riskLabel,
+      riskScore:
+        p.riskScore !== undefined ? p.riskScore : prev.riskScore,
+    }));
+    if (p.riskProfile !== undefined) setRiskProfile(p.riskProfile);
+  }, [currentUser]);
 
   const signUp = useCallback(async (name, email, password) => {
     setIsLoading(true);
@@ -103,11 +192,10 @@ export function AppProvider({ children }) {
       throw new Error("An account with this email already exists.");
     }
     const avatar = initialsFromName(trimmedName);
-    /** Demo only — passwords stored in plain text for local simulation */
     const record = {
       name: trimmedName,
       email: trimmedEmail,
-      password: String(password),
+      passwordHash: hashPassword(password),
       avatar,
     };
     users.push(record);
@@ -130,9 +218,28 @@ export function AppProvider({ children }) {
     const trimmedEmail = String(email).trim().toLowerCase();
     const users = readUsers();
     const user = users.find((u) => u.email.toLowerCase() === trimmedEmail);
-    if (!user || user.password !== String(password)) {
+    if (!user) {
       setIsLoading(false);
-      throw new Error("Invalid email or password.");
+      throw new Error(SIGN_IN_ERROR_EMAIL_NOT_FOUND);
+    }
+    const inputHash = hashPassword(password);
+    let passwordOk = user.passwordHash === inputHash;
+    if (!passwordOk && user.password === String(password)) {
+      passwordOk = true;
+      const list = readUsers();
+      const ix = list.findIndex(
+        (u) => u.email.toLowerCase() === trimmedEmail,
+      );
+      if (ix >= 0) {
+        const next = { ...list[ix], passwordHash: inputHash };
+        delete next.password;
+        list[ix] = next;
+        localStorage.setItem(USERS_KEY, JSON.stringify(list));
+      }
+    }
+    if (!passwordOk) {
+      setIsLoading(false);
+      throw new Error(SIGN_IN_ERROR_WRONG_PASSWORD);
     }
     const sessionUser = {
       name: user.name,
@@ -143,6 +250,46 @@ export function AppProvider({ children }) {
     setCurrentUser(sessionUser);
     setIsAuthenticated(true);
     setIsLoading(false);
+  }, []);
+
+  /**
+   * Demo hackathon shortcut: ensure judges have a seeded account, onboarding
+   * flag, and context aligned with the mock portfolio.
+   */
+  const ensureDemoAccount = useCallback(() => {
+    const users = readUsers();
+    const email = DEMO_ACCOUNT_EMAIL.toLowerCase();
+    if (!users.some((u) => u.email.toLowerCase() === email)) {
+      users.push({
+        name: "Alex Chen",
+        email,
+        passwordHash: hashPassword(DEMO_ACCOUNT_PASSWORD),
+        avatar: initialsFromName("Alex Chen"),
+      });
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+    localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+    const demoGoal = {
+      type: "retirement",
+      targetAmount: alexChenPortfolio.goal.targetAmount,
+      targetYear: 2050,
+    };
+    const demoRiskLabel = initialRiskLabelFromPortfolio(alexChenPortfolio);
+    setUserProfile((prev) => ({
+      ...prev,
+      name: alexChenPortfolio.user.name,
+      riskLabel: demoRiskLabel,
+    }));
+    setSelectedGoal(demoGoal);
+    localStorage.setItem(
+      profileStorageKey(email),
+      JSON.stringify({
+        goal: demoGoal,
+        riskLabel: demoRiskLabel,
+        riskScore: null,
+        riskProfile: null,
+      }),
+    );
   }, []);
 
   const signOut = useCallback(() => {
@@ -175,8 +322,9 @@ export function AppProvider({ children }) {
       signUp,
       signIn,
       signOut,
+      ensureDemoAccount,
     }),
-    [currentUser, isAuthenticated, isLoading, signUp, signIn, signOut],
+    [currentUser, isAuthenticated, isLoading, signUp, signIn, signOut, ensureDemoAccount],
   );
 
   return (

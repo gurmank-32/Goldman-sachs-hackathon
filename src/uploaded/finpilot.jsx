@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useAppContext, useAuth } from "../store/AppContext.jsx";
+import {
+  DEFAULT_DISPLAY_NAME,
+  useAppContext,
+  useAuth,
+} from "../store/AppContext.jsx";
+import { askAssistant } from "../services/marketApi.js";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const RISK_LEVELS = { LOW: "Low", MEDIUM: "Medium", HIGH: "High" };
@@ -218,21 +223,469 @@ const globalStyle = `
   .asset-value { text-align: right; }
   .asset-val { font-size: 15px; font-weight: 600; }
   .asset-gain { font-size: 12px; }
-  .onboard-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); }
-  .onboard-card { background: white; border-radius: 24px; padding: 48px; width: 560px; max-width: 95vw; }
-  .onboard-option { border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; cursor: pointer; font-size: 15px; transition: all .15s; text-align: left; width: 100%; display: flex; align-items: flex-start; gap: 14px; }
-  .onboard-option:hover { border-color: #00d4aa; background: rgba(0,212,170,.04); }
-  .onboard-option.selected { border-color: #00d4aa; background: rgba(0,212,170,.08); font-weight: 500; }
-  .onboard-opt-icon { font-size: 22px; line-height: 1.2; flex-shrink: 0; width: 32px; text-align: center; }
-  .onboard-opt-text { flex: 1; min-width: 0; }
-  .onboard-opt-title { font-size: 15px; font-weight: 600; color: #0f172a; line-height: 1.35; }
-  .onboard-opt-desc { font-size: 13px; color: #64748b; margin-top: 4px; line-height: 1.4; font-weight: 400; }
-  .onboard-step-badge { font-size: 12px; font-weight: 600; color: #00d4aa; letter-spacing: 0.02em; margin-bottom: 10px; text-align: center; text-transform: uppercase; }
-  .onboard-hint { font-size: 14px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; max-width: 420px; margin-left: auto; margin-right: auto; }
-  .step-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
-  .step-dot { width: 8px; height: 8px; border-radius: 4px; background: #e2e8f0; transition: all .2s; }
-  .step-dot.active { background: #00d4aa; width: 24px; }
-  .step-dot.done { background: #10b981; }
+  @keyframes onboard-card-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes onboard-content-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .onboard-container {
+    position: relative;
+    isolation: isolate;
+    overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(24px, 5vw, 48px) clamp(18px, 4vw, 28px);
+    /* Stack: top layers first — center stays readable; base navy unchanged */
+    background:
+      radial-gradient(ellipse 52% 48% at 50% 44%, rgba(255, 255, 255, 0.03) 0%, transparent 62%),
+      radial-gradient(ellipse 95% 70% at 50% -5%, rgba(0, 212, 170, 0.13) 0%, transparent 58%),
+      radial-gradient(ellipse 70% 55% at 95% 15%, rgba(56, 189, 248, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 65% 50% at 5% 25%, rgba(0, 212, 170, 0.06) 0%, transparent 52%),
+      linear-gradient(118deg, rgba(0, 212, 170, 0.045) 0%, transparent 48%),
+      linear-gradient(305deg, rgba(96, 165, 250, 0.055) 0%, transparent 52%),
+      linear-gradient(195deg, transparent 40%, rgba(15, 52, 96, 0.22) 100%),
+      radial-gradient(ellipse 85% 70% at 100% 100%, rgba(15, 52, 96, 0.55) 0%, transparent 52%),
+      radial-gradient(ellipse 75% 60% at 0% 100%, rgba(26, 26, 46, 0.42) 0%, transparent 50%),
+      linear-gradient(155deg, #1a1a2e 0%, #0f3460 48%, #141e33 100%);
+    background-color: #141e33;
+  }
+  /* Soft teal / blue blur orbs — luxury depth, very low contrast */
+  .onboard-container::before {
+    content: "";
+    position: absolute;
+    inset: -12%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 42vmin at 22% 32%, rgba(0, 212, 170, 0.2) 0%, transparent 58%),
+      radial-gradient(circle 48vmin at 82% 22%, rgba(125, 211, 252, 0.14) 0%, transparent 58%),
+      radial-gradient(circle 50vmin at 78% 88%, rgba(15, 52, 96, 0.38) 0%, transparent 56%),
+      radial-gradient(circle 38vmin at 12% 82%, rgba(0, 212, 170, 0.11) 0%, transparent 54%);
+    filter: blur(76px);
+    opacity: 0.72;
+    transform: translateZ(0);
+  }
+  /* Minimal noise + gentle vignette — keeps center brightest for the card */
+  .onboard-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+      radial-gradient(ellipse 72% 68% at 50% 45%, transparent 22%, rgba(8, 12, 28, 0.38) 100%);
+    background-size: 19px 19px, auto;
+    background-blend-mode: soft-light, normal;
+    opacity: 0.42;
+    mix-blend-mode: soft-light;
+    mask-image: radial-gradient(ellipse 85% 80% at 50% 45%, black 18%, transparent 78%);
+  }
+  .onboard-card-wrap {
+    position: relative;
+    z-index: 1;
+    border-radius: 28px;
+    padding: 1px;
+    max-width: min(520px, 94vw);
+    background: linear-gradient(
+      155deg,
+      rgba(0, 212, 170, 0.22) 0%,
+      rgba(255, 255, 255, 0.08) 48%,
+      rgba(255, 255, 255, 0.06) 100%
+    );
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 40px 80px rgba(15, 23, 42, 0.35),
+      0 16px 40px rgba(15, 23, 42, 0.12),
+      0 0 80px rgba(0, 212, 170, 0.06);
+    animation: onboard-card-float 8s ease-in-out infinite;
+  }
+  .onboard-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.985);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 27px;
+    padding: clamp(36px, 7vw, 52px) clamp(28px, 5vw, 40px);
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 0 rgba(15, 23, 42, 0.03),
+      0 1px 2px rgba(15, 23, 42, 0.03),
+      0 24px 48px rgba(15, 52, 96, 0.06),
+      0 8px 16px rgba(15, 23, 42, 0.03);
+  }
+  .onboard-brand {
+    text-align: center;
+    margin-bottom: clamp(28px, 5vw, 40px);
+  }
+  .onboard-brand-mark {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.625rem, 4.5vw, 2rem);
+    font-weight: 600;
+    color: #00d4aa;
+    letter-spacing: -0.035em;
+    margin-bottom: 8px;
+    line-height: 1.1;
+  }
+  .onboard-brand-tag {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+  .onboard-progress {
+    margin-bottom: clamp(28px, 4vw, 36px);
+  }
+  .onboard-progress-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .onboard-progress-meta {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .onboard-progress-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #64748b;
+    letter-spacing: 0.02em;
+  }
+  .onboard-progress-track {
+    height: 4px;
+    border-radius: 999px;
+    background: #eef2f6;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+  .onboard-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #00c9a3 0%, #00d4aa 45%, #5eead4 100%);
+    box-shadow: 0 0 12px rgba(0, 212, 170, 0.35);
+    transition: width 0.5s cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .onboard-step-body {
+    animation: onboard-content-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .onboard-step-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #00d4aa;
+    letter-spacing: 0.14em;
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%;
+    opacity: 0.92;
+  }
+  .onboard-question {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.375rem, 4vw, 1.75rem);
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+    line-height: 1.22;
+    letter-spacing: -0.028em;
+    margin-bottom: 16px;
+    max-width: 22em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .onboard-hint {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: clamp(28px, 4vw, 36px);
+    line-height: 1.65;
+    max-width: 34rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .onboard-options {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .onboard-option {
+    position: relative;
+    border: 1px solid #e6eef0;
+    border-radius: 20px;
+    padding: 17px 18px;
+    cursor: pointer;
+    font-size: 15px;
+    transition:
+      transform 250ms cubic-bezier(0.34, 1.25, 0.64, 1),
+      box-shadow 250ms ease,
+      border-color 250ms ease,
+      background 250ms ease;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    background: #ffffff;
+    color: inherit;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.035),
+      0 10px 28px rgba(15, 52, 96, 0.045),
+      0 4px 12px rgba(15, 23, 42, 0.03);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .onboard-option:hover {
+    transform: translateY(-2px) scale(1.012);
+    border-color: rgba(0, 212, 170, 0.45);
+    background: #ffffff;
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.04),
+      0 12px 32px rgba(15, 52, 96, 0.08),
+      0 0 0 1px rgba(0, 212, 170, 0.12);
+  }
+  .onboard-option:focus-visible {
+    outline: 2px solid #00d4aa;
+    outline-offset: 3px;
+  }
+  .onboard-option.selected {
+    border: 2px solid #00d4aa;
+    padding: 16px 17px;
+    background: linear-gradient(180deg, rgba(0, 212, 170, 0.09) 0%, rgba(0, 212, 170, 0.04) 100%);
+    box-shadow:
+      0 0 0 1px rgba(0, 212, 170, 0.1),
+      0 0 28px rgba(0, 212, 170, 0.2),
+      0 10px 28px rgba(15, 23, 42, 0.07);
+    transform: translateY(-1px) scale(1.01);
+  }
+  .onboard-option.selected .onboard-opt-title { color: #0b1220; }
+  .onboard-opt-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(0, 212, 170, 0.12) 0%, rgba(0, 212, 170, 0.06) 100%);
+    border: 1px solid rgba(0, 212, 170, 0.1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.75),
+      0 2px 6px rgba(15, 52, 96, 0.06);
+    filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.4));
+    transition:
+      transform 250ms cubic-bezier(0.34, 1.25, 0.64, 1),
+      background 250ms ease,
+      box-shadow 250ms ease,
+      border-color 250ms ease;
+  }
+  .onboard-option:hover .onboard-opt-icon {
+    transform: scale(1.04);
+    background: linear-gradient(145deg, rgba(0, 212, 170, 0.16) 0%, rgba(0, 212, 170, 0.08) 100%);
+    border-color: rgba(0, 212, 170, 0.2);
+  }
+  .onboard-option.selected .onboard-opt-icon {
+    background: linear-gradient(145deg, rgba(0, 212, 170, 0.22) 0%, rgba(0, 212, 170, 0.1) 100%);
+    border-color: rgba(0, 212, 170, 0.25);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 0 20px rgba(0, 212, 170, 0.25);
+  }
+  .onboard-opt-text { flex: 1; min-width: 0; padding-top: 1px; }
+  .onboard-opt-title {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.42;
+    letter-spacing: -0.012em;
+  }
+  .onboard-opt-desc {
+    display: block;
+    font-size: 0.8125rem;
+    color: #94a3b8;
+    margin-top: 8px;
+    line-height: 1.52;
+    font-weight: 400;
+    letter-spacing: 0.008em;
+  }
+  .onboard-next-btn {
+    --onboard-next-glow: rgba(0, 212, 170, 0.22);
+    margin-top: clamp(32px, 5vw, 40px);
+    width: 100%;
+    min-height: 54px;
+    padding: 16px 28px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    line-height: 1.2;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition:
+      transform 0.45s cubic-bezier(0.34, 1.15, 0.48, 1),
+      box-shadow 0.45s cubic-bezier(0.34, 1.15, 0.48, 1),
+      opacity 0.25s ease,
+      filter 0.35s ease;
+    color: #081421 !important;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 42%),
+      linear-gradient(168deg, #12e4bd 0%, #00d4aa 42%, #00b896 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -1px 0 rgba(0, 90, 76, 0.08),
+      0 1px 2px rgba(8, 20, 33, 0.06),
+      0 4px 14px rgba(0, 140, 118, 0.14),
+      0 2px 6px rgba(15, 23, 42, 0.05);
+  }
+  .onboard-next-btn::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.45) 0%, transparent 55%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .onboard-next-btn:hover:not(:disabled)::before {
+    opacity: 0.35;
+  }
+  .onboard-next-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    filter: brightness(1.02);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(0, 90, 76, 0.06),
+      0 0 0 1px rgba(0, 212, 170, 0.18),
+      0 6px 18px rgba(0, 160, 136, 0.18),
+      0 14px 36px var(--onboard-next-glow),
+      0 28px 56px rgba(0, 212, 170, 0.12);
+  }
+  .onboard-next-btn:active:not(:disabled) {
+    transform: translateY(-1px) scale(0.985);
+    filter: brightness(0.99);
+    transition:
+      transform 0.12s cubic-bezier(0.33, 1, 0.68, 1),
+      box-shadow 0.12s ease,
+      filter 0.12s ease;
+    box-shadow:
+      inset 0 2px 8px rgba(8, 25, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 2px 8px rgba(0, 140, 118, 0.12),
+      0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+  .onboard-next-btn:focus-visible {
+    outline: 2px solid #00d4aa;
+    outline-offset: 3px;
+  }
+  .onboard-next-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    filter: none;
+    background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%) !important;
+    color: #94a3b8 !important;
+  }
+  .onboard-next-btn:disabled::before {
+    display: none;
+  }
+  .onboard-next-btn-inner {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .onboard-next-btn-label {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .onboard-next-btn-arrow {
+    display: inline-flex;
+    flex-shrink: 0;
+    transition: transform 0.42s cubic-bezier(0.34, 1.15, 0.48, 1);
+  }
+  .onboard-next-btn:hover:not(:disabled) .onboard-next-btn-arrow {
+    transform: translateX(5px);
+  }
+  .onboard-next-btn:active:not(:disabled) .onboard-next-btn-arrow {
+    transform: translateX(2px);
+    transition-duration: 0.12s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .onboard-card-wrap,
+    .onboard-step-body {
+      animation: none !important;
+    }
+    .onboard-progress-fill {
+      transition: none !important;
+    }
+    .onboard-option,
+    .onboard-next-btn,
+    .onboard-opt-icon {
+      transition: none !important;
+    }
+    .onboard-option:hover,
+    .onboard-option.selected,
+    .onboard-option:hover .onboard-opt-icon {
+      transform: none;
+    }
+    .onboard-next-btn:hover:not(:disabled),
+    .onboard-next-btn:active:not(:disabled) {
+      transform: none;
+      filter: none;
+    }
+    .onboard-next-btn:hover:not(:disabled) .onboard-next-btn-arrow,
+    .onboard-next-btn:active:not(:disabled) .onboard-next-btn-arrow {
+      transform: none;
+    }
+  }
   .panic-overlay { position: fixed; inset: 0; background: rgba(239,68,68,.15); display: flex; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(4px); }
   .panic-card { background: white; border-radius: 20px; padding: 40px; max-width: 480px; text-align: center; border: 2px solid #fee2e2; }
 `;
@@ -278,6 +731,8 @@ function Onboarding({ onComplete }) {
   const [selectedIdx, setSelectedIdx] = useState(null);
 
   const q = ONBOARDING_QUESTIONS[step];
+  const totalSteps = ONBOARDING_QUESTIONS.length;
+  const progressPct = ((step + 1) / totalSteps) * 100;
 
   const handleNext = () => {
     if (selectedIdx === null) return;
@@ -296,52 +751,116 @@ function Onboarding({ onComplete }) {
 
   return (
     <div className="onboard-container">
-      <style>{globalStyle}</style>
-      <div className="onboard-card">
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: "#00d4aa", marginBottom: 4 }}>FinPilot</div>
-          <div style={{ fontSize: 13, color: "#64748b" }}>Your beginner-friendly financial co-pilot</div>
-        </div>
-        <div className="step-dots">
-          {ONBOARDING_QUESTIONS.map((_, i) => (
-            <div key={i} className={`step-dot ${i === step ? "active" : i < step ? "done" : ""}`} />
-          ))}
-        </div>
-        <div style={{ marginBottom: 8, fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
-          Question {step + 1} of {ONBOARDING_QUESTIONS.length}
-        </div>
-        <div className="onboard-step-badge">
-          Question {step + 1}: {q.stepLabel}
-        </div>
-        <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, textAlign: "center", lineHeight: 1.4 }}>{q.question}</h2>
-        <p className="onboard-hint">{q.hint}</p>
-        {q.options.map((opt, idx) => (
+      <div className="onboard-card-wrap">
+        <div className="onboard-card">
+          <header className="onboard-brand">
+            <div className="onboard-brand-mark">FinPilot</div>
+            <p className="onboard-brand-tag">Your beginner-friendly financial co-pilot</p>
+          </header>
+
+          <div className="onboard-progress">
+            <span className="sr-only">
+              Question {step + 1} of {totalSteps}
+            </span>
+            <div className="onboard-progress-label" aria-hidden>
+              <span className="onboard-progress-meta">Your profile</span>
+              <span className="onboard-progress-count">
+                {step + 1} / {totalSteps}
+              </span>
+            </div>
+            <div
+              className="onboard-progress-track"
+              role="progressbar"
+              aria-valuemin={1}
+              aria-valuemax={totalSteps}
+              aria-valuenow={step + 1}
+              aria-valuetext={`Step ${step + 1} of ${totalSteps}`}
+            >
+              <div
+                className="onboard-progress-fill"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+
+          <div key={step} className="onboard-step-body">
+            <p className="onboard-step-badge">{q.stepLabel}</p>
+
+            <h2 id={`onboard-q-${q.id}`} className="onboard-question">
+              {q.question}
+            </h2>
+            <p className="onboard-hint">{q.hint}</p>
+
+            <div className="onboard-options" role="group" aria-labelledby={`onboard-q-${q.id}`}>
+              {q.options.map((opt, idx) => (
+                <button
+                  key={`${q.id}-${idx}`}
+                  type="button"
+                  className={`onboard-option ${selectedIdx === idx ? "selected" : ""}`}
+                  aria-pressed={selectedIdx === idx}
+                  onClick={() => setSelectedIdx(idx)}
+                >
+                  <span className="onboard-opt-icon" aria-hidden>{opt.icon}</span>
+                  <span className="onboard-opt-text">
+                    <span className="onboard-opt-title">{opt.label}</span>
+                    <span className="onboard-opt-desc">{opt.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
-            key={`${q.id}-${idx}`}
             type="button"
-            className={`onboard-option ${selectedIdx === idx ? "selected" : ""}`}
-            onClick={() => setSelectedIdx(idx)}
+            className="btn-primary onboard-next-btn"
+            disabled={selectedIdx === null}
+            onClick={handleNext}
           >
-            <span className="onboard-opt-icon" aria-hidden>{opt.icon}</span>
-            <span className="onboard-opt-text">
-              <div className="onboard-opt-title">{opt.label}</div>
-              <div className="onboard-opt-desc">{opt.description}</div>
+            <span className="onboard-next-btn-inner">
+              <span className="onboard-next-btn-label">
+                {step < ONBOARDING_QUESTIONS.length - 1 ? "Continue" : "See my profile"}
+              </span>
+              <span className="onboard-next-btn-arrow" aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
             </span>
           </button>
-        ))}
-        <button className="btn-primary" style={{ width: "100%", marginTop: 20, opacity: selectedIdx === null ? 0.5 : 1 }}
-          type="button"
-          disabled={selectedIdx === null}
-          onClick={handleNext}>
-          {step < ONBOARDING_QUESTIONS.length - 1 ? "Next →" : "See My Profile"}
-        </button>
+        </div>
       </div>
     </div>
   );
 }
 
+function portfolioBreakdownByType(portfolio) {
+  const total = portfolio.totalValue || 1;
+  const sums = { stock: 0, mutual: 0, bond: 0, cash: 0 };
+  for (const a of portfolio.assets) {
+    if (sums[a.type] !== undefined) sums[a.type] += a.value;
+  }
+  return [
+    { label: "Stocks & ETFs", value: (sums.stock / total) * 100, color: "#1a1a2e" },
+    { label: "Mutual Funds", value: (sums.mutual / total) * 100, color: "#00d4aa" },
+    { label: "Bonds", value: (sums.bond / total) * 100, color: "#f59e0b" },
+    { label: "Cash", value: (sums.cash / total) * 100, color: "#94a3b8" },
+  ];
+}
+
 // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 function Dashboard({ portfolio, riskProfile, onPanic }) {
+  const [homePortfolioTab, setHomePortfolioTab] = useState("holdings");
+  const typeIcons = { stock: "📊", mutual: "🏦", bond: "📜", cash: "💵" };
+  const typeColors = { stock: "#dbeafe", mutual: "#ede9fe", bond: "#dcfce7", cash: "#f1f5f9" };
+  const breakdownRows = portfolioBreakdownByType(portfolio);
+  const ytdGain = Math.round(portfolio.totalValue * 0.093);
+
   const risk = calcRisk(portfolio.allocation.stocks);
   const health = calcHealthScore(portfolio.allocation, riskProfile);
   const donutData = [
@@ -423,6 +942,82 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="section-title">Your investments</div>
+        <div
+          role="tablist"
+          aria-label="Portfolio holdings and breakdown"
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 20,
+            flexWrap: "wrap",
+            borderBottom: "1px solid #e2e8f0",
+            paddingBottom: 12,
+          }}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={homePortfolioTab === "holdings"}
+            className={homePortfolioTab === "holdings" ? "btn-primary" : "btn-outline"}
+            style={{ fontSize: 14, padding: "10px 18px", borderRadius: 10 }}
+            onClick={() => setHomePortfolioTab("holdings")}
+          >
+            Holdings
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={homePortfolioTab === "breakdown"}
+            className={homePortfolioTab === "breakdown" ? "btn-primary" : "btn-outline"}
+            style={{ fontSize: 14, padding: "10px 18px", borderRadius: 10 }}
+            onClick={() => setHomePortfolioTab("breakdown")}
+          >
+            Breakdown
+          </button>
+        </div>
+
+        {homePortfolioTab === "holdings" ? (
+          <div role="tabpanel">
+            <div className="section-title" style={{ marginBottom: 12 }}>Stocks & Funds</div>
+            {portfolio.assets.filter((a) => a.type !== "cash").map((asset) => (
+              <div key={asset.ticker} className="asset-row">
+                <div className="asset-icon" style={{ background: typeColors[asset.type] }}>{typeIcons[asset.type]}</div>
+                <div className="asset-info">
+                  <div className="asset-name">{asset.name}</div>
+                  <div className="asset-sub">{asset.sector} · <span className={`badge badge-${asset.risk === "High" ? "red" : asset.risk === "Medium" ? "yellow" : "green"}`}>{asset.risk} risk</span></div>
+                </div>
+                <div className="asset-value">
+                  <div className="asset-val">{fmt(asset.value)}</div>
+                  <div className="asset-gain" style={{ color: asset.gain >= 0 ? "#10b981" : "#ef4444" }}>
+                    {asset.gain >= 0 ? "+" : ""}{asset.gain}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div role="tabpanel">
+            <div className="section-title" style={{ marginBottom: 12 }}>By investment type</div>
+            {breakdownRows.map((s) => (
+              <div key={s.label} style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 14 }}>{s.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{s.value.toFixed(1)}%</span>
+                </div>
+                <MiniBar value={Math.min(100, s.value)} color={s.color} />
+              </div>
+            ))}
+            <div style={{ marginTop: 20, padding: "14px", background: "#f8fafc", borderRadius: 10 }}>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Total portfolio value</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{fmt(portfolio.totalValue)}</div>
+              <div style={{ fontSize: 13, color: "#10b981", marginTop: 2 }}>↑ +{fmt(ytdGain)} this year</div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="card">
         <div className="section-title">Goal Progress</div>
         <div className="grid2">
@@ -443,60 +1038,6 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── PORTFOLIO ────────────────────────────────────────────────────────────────
-function Portfolio({ portfolio }) {
-  const typeIcons = { stock: "📊", mutual: "🏦", bond: "📜", cash: "💵" };
-  const typeColors = { stock: "#dbeafe", mutual: "#ede9fe", bond: "#dcfce7", cash: "#f1f5f9" };
-
-  return (
-    <div>
-      <div className="fp-header"><h2>Your Portfolio</h2><p>All your investments in one simple view</p></div>
-      <div className="grid2" style={{ marginBottom: 24 }}>
-        <div className="card">
-          <div className="section-title">Stocks & Funds</div>
-          {portfolio.assets.filter((a) => a.type !== "cash").map((asset) => (
-            <div key={asset.ticker} className="asset-row">
-              <div className="asset-icon" style={{ background: typeColors[asset.type] }}>{typeIcons[asset.type]}</div>
-              <div className="asset-info">
-                <div className="asset-name">{asset.name}</div>
-                <div className="asset-sub">{asset.sector} · <span className={`badge badge-${asset.risk === "High" ? "red" : asset.risk === "Medium" ? "yellow" : "green"}`}>{asset.risk} risk</span></div>
-              </div>
-              <div className="asset-value">
-                <div className="asset-val">{fmt(asset.value)}</div>
-                <div className="asset-gain" style={{ color: asset.gain >= 0 ? "#10b981" : "#ef4444" }}>
-                  {asset.gain >= 0 ? "+" : ""}{asset.gain}%
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="section-title">Portfolio Breakdown</div>
-          {[
-            { label: "Stocks & ETFs", value: 63.5, color: "#1a1a2e" },
-            { label: "Mutual Funds", value: 25.6, color: "#00d4aa" },
-            { label: "Bonds", value: 5.3, color: "#f59e0b" },
-            { label: "Cash", value: 5.6, color: "#94a3b8" },
-          ].map((s) => (
-            <div key={s.label} style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 14 }}>{s.label}</span>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{s.value}%</span>
-              </div>
-              <MiniBar value={s.value} color={s.color} />
-            </div>
-          ))}
-          <div style={{ marginTop: 20, padding: "14px", background: "#f8fafc", borderRadius: 10 }}>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Total portfolio value</div>
-            <div style={{ fontSize: 24, fontWeight: 700 }}>{fmt(portfolio.totalValue)}</div>
-            <div style={{ fontSize: 13, color: "#10b981", marginTop: 2 }}>↑ +{fmt(7290)} this year</div>
-          </div>
         </div>
       </div>
     </div>
@@ -738,31 +1279,40 @@ function Assistant({ portfolio, riskProfile }) {
     setMessages((m) => [...m, { role: "user", text: userMsg }]);
     setLoading(true);
 
-    const systemPrompt = `You are FinPilot, a friendly financial advisor for beginners. The user's portfolio:
+    const context = `FinPilot user portfolio snapshot:
 - Total value: ${fmt(portfolio.totalValue)}
 - Allocation: Stocks ${portfolio.allocation.stocks}%, Bonds ${portfolio.allocation.bonds}%, Cash ${portfolio.allocation.cash}%
 - Risk profile: ${riskProfile}
-- Health score: ${calcHealthScore(portfolio.allocation, riskProfile)}/100
-Answer in plain English with NO financial jargon. Keep responses under 3 sentences. Be warm, reassuring but honest. Use simple emojis. Never say "Alpha", "Beta", "Sharpe ratio" etc.`;
+- Health score: ${calcHealthScore(portfolio.allocation, riskProfile)}/100`;
+
+    const priorHistory = messages
+      .slice(1)
+      .slice(-14)
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userMsg }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.find((c) => c.type === "text")?.text || "I'm not sure about that — try rephrasing!";
+      const text = await askAssistant(userMsg, context, priorHistory);
       setMessages((m) => [...m, { role: "ai", text }]);
-    } catch {
-      setMessages((m) => [...m, { role: "ai", text: "Oops! I had a hiccup. Try again in a moment 🙏" }]);
+    } catch (err) {
+      console.error("[FinPilot assistant]", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      const hint =
+        msg.includes("GEMINI_API_KEY") || msg.includes("gemini_not_configured")
+          ? " Add GEMINI_API_KEY to backend/.env or root .env, then restart the Python server (npm run dev)."
+          : "";
+      setMessages((m) => [
+        ...m,
+        {
+          role: "ai",
+          text: `Something went wrong talking to the assistant.${hint ? ` ${hint}` : ""} Details: ${msg}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const suggestions = ["Is my portfolio safe?", "Should I sell now?", "How do I reduce risk?", "Am I on track for retirement?"];
@@ -835,17 +1385,81 @@ function PanicMode({ onClose }) {
   );
 }
 
+const FINPILOT_ALERTS_SUBSCRIBE_KEY = "finpilot_alerts_subscribed_email";
+const FINPILOT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // ─── ALERTS ───────────────────────────────────────────────────────────────────
 function Alerts() {
+  const { currentUser } = useAuth();
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [error, setError] = useState("");
+
   const alerts = [
     { icon: "⚠️", title: "Portfolio drift detected", desc: "Your stocks allocation rose to 72% — 7% above your target. Consider trimming.", color: "#fef9c3", action: "Rebalance now" },
     { icon: "📉", title: "Tech sector down 5%", desc: "Your Tech holding dropped. This is within normal range — no action needed yet.", color: "#fee2e2", action: "View details" },
     { icon: "✅", title: "You're on track for retirement", desc: "Great news! Your portfolio is 65% toward your retirement goal. Keep contributing.", color: "#dcfce7", action: null },
     { icon: "💡", title: "Rebalance opportunity", desc: "Bond yields have risen — a good time to increase your bond allocation for stability.", color: "#dbeafe", action: "See recommendations" },
   ];
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FINPILOT_ALERTS_SUBSCRIBE_KEY);
+      if (stored) {
+        setEmail(stored);
+        setSubscribed(true);
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    if (currentUser?.email) setEmail(currentUser.email);
+  }, [currentUser?.email]);
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    setError("");
+    const em = email.trim();
+    if (!FINPILOT_EMAIL_RE.test(em)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    try {
+      localStorage.setItem(FINPILOT_ALERTS_SUBSCRIBE_KEY, em);
+    } catch {
+      /* ignore */
+    }
+    const subject = encodeURIComponent("You're subscribed to FinPilot updates");
+    const body = encodeURIComponent(
+      "Thanks for subscribing to FinPilot market and portfolio updates.\n\nYou're on the list — we'll send important alerts and insights for your plan.\n\n— FinPilot",
+    );
+    const href = `mailto:${encodeURIComponent(em)}?subject=${subject}&body=${body}`;
+    const a = document.createElement("a");
+    a.href = href;
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setSubscribed(true);
+  };
+
+  const handleChangeEmail = () => {
+    try {
+      localStorage.removeItem(FINPILOT_ALERTS_SUBSCRIBE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setSubscribed(false);
+    setError("");
+  };
+
   return (
     <div>
-      <div className="fp-header"><h2>Alerts & Insights</h2><p>Important updates about your portfolio</p></div>
+      <div className="fp-header">
+        <h2>Alerts & Insights</h2>
+        <p>Important updates about your portfolio</p>
+      </div>
+
       {alerts.map((a, i) => (
         <div key={i} className="card" style={{ marginBottom: 16, background: a.color, borderColor: "transparent" }}>
           <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -854,26 +1468,78 @@ function Alerts() {
               <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{a.title}</div>
               <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.6 }}>{a.desc}</div>
             </div>
-            {a.action && <button className="btn-outline" style={{ fontSize: 13, padding: "7px 16px", flexShrink: 0 }}>{a.action}</button>}
+            {a.action && <button type="button" className="btn-outline" style={{ fontSize: 13, padding: "7px 16px", flexShrink: 0 }}>{a.action}</button>}
           </div>
         </div>
       ))}
+
+      <div className="section-title" style={{ marginTop: 28, marginBottom: 12 }}>Subscribe to latest updates</div>
+      <div className="card" style={{ maxWidth: 560 }}>
+        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Get FinPilot updates by email</div>
+        <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.6, marginBottom: 20 }}>
+          Subscribe to the latest market and portfolio insights. After you confirm, your mail app opens with a short message — send it to yourself to see the subscription confirmation in your inbox.
+        </p>
+        {!subscribed ? (
+          <form onSubmit={handleSubscribe}>
+            <label htmlFor="fp-subscribe-email" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+              Email address
+            </label>
+            <input
+              id="fp-subscribe-email"
+              type="email"
+              autoComplete="email"
+              className="chat-input"
+              style={{ width: "100%", marginBottom: 12 }}
+              placeholder="you@example.com"
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+            />
+            {error ? (
+              <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 12 }}>{error}</p>
+            ) : null}
+            <button type="submit" className="btn-primary">
+              Subscribe
+            </button>
+          </form>
+        ) : (
+          <div>
+            <div
+              className="badge badge-green"
+              style={{ display: "inline-block", marginBottom: 12, fontSize: 13, padding: "8px 14px" }}
+            >
+              Subscribed as {email}
+            </div>
+            <p style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.6, marginBottom: 16 }}>
+              If your mail app opened, send the draft message to yourself — you’ll get the confirmation in your inbox (or check your Sent folder).
+            </p>
+            <button type="button" className="btn-outline" onClick={handleChangeEmail}>
+              Use a different email
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+const FINPILOT_ONBOARDING_KEY = "finpilot_onboarding_done";
+
 export default function FinPilot() {
   const { currentUser, signOut } = useAuth();
   const { setRiskProfile: setRiskProfileCtx } = useAppContext();
-  const [page, setPage] = useState("onboarding");
+  const [page, setPage] = useState(() =>
+    typeof localStorage !== "undefined" &&
+    localStorage.getItem(FINPILOT_ONBOARDING_KEY) === "true"
+      ? "dashboard"
+      : "onboarding",
+  );
   const [riskProfile, setRiskProfile] = useState("Balanced");
   const [portfolio, setPortfolio] = useState(DEFAULT_PORTFOLIO);
   const [showPanic, setShowPanic] = useState(false);
 
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: "🏠" },
-    { id: "portfolio", label: "My Portfolio", icon: "💼" },
     { id: "scenarios", label: "What-If Scenarios", icon: "🔮" },
     { id: "rebalance", label: "Rebalancing", icon: "⚖️" },
     { id: "assistant", label: "AI Assistant", icon: "🤖" },
@@ -883,6 +1549,14 @@ export default function FinPilot() {
   const handleOnboardingComplete = (profile) => {
     setRiskProfile(profile);
     setRiskProfileCtx(profile);
+    try {
+      localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("finpilot-onboarding-complete"));
+    }
     setPage("dashboard");
   };
 
@@ -890,6 +1564,7 @@ export default function FinPilot() {
     setPortfolio((p) => ({ ...p, allocation: newAlloc }));
   };
 
+  /** Questions only — no sidebar until complete (full FinPilot opens after). */
   if (page === "onboarding") {
     return (
       <>
@@ -912,7 +1587,6 @@ export default function FinPilot() {
   const renderPage = () => {
     switch (page) {
       case "dashboard": return <Dashboard portfolio={portfolio} riskProfile={riskProfile} onPanic={() => setShowPanic(true)} />;
-      case "portfolio": return <Portfolio portfolio={portfolio} />;
       case "scenarios": return <Scenarios portfolio={portfolio} />;
       case "rebalance": return <Rebalance portfolio={portfolio} riskProfile={riskProfile} onApply={handleApplyRebalance} />;
       case "assistant": return <Assistant portfolio={portfolio} riskProfile={riskProfile} />;
@@ -945,7 +1619,9 @@ export default function FinPilot() {
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginBottom: 4 }}>
                   Signed in
                 </div>
-                <div style={{ fontSize: 14, color: "white", fontWeight: 600 }}>{currentUser.name}</div>
+                <div style={{ fontSize: 14, color: "white", fontWeight: 600 }}>
+                  {currentUser?.name?.trim() || DEFAULT_DISPLAY_NAME}
+                </div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.55)", marginTop: 2 }}>{currentUser.email}</div>
                 <div style={{ marginTop: 8, fontSize: 13, color: "#00d4aa", fontWeight: 700 }}>{currentUser.avatar}</div>
               </div>
@@ -953,7 +1629,17 @@ export default function FinPilot() {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginBottom: 4 }}>Risk profile</div>
             <div style={{ fontSize: 14, color: "#00d4aa", fontWeight: 600 }}>{riskProfile}</div>
             <button type="button" style={{ marginTop: 10, fontSize: 12, color: "rgba(255,255,255,.4)", textDecoration: "underline" }}
-              onClick={() => setPage("onboarding")}>Update profile</button>
+              onClick={() => {
+                try {
+                  localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
+                } catch {
+                  /* ignore */
+                }
+                setPage("onboarding");
+              }}
+            >
+              Update profile
+            </button>
             <button
               type="button"
               onClick={() => signOut()}
@@ -972,9 +1658,7 @@ export default function FinPilot() {
             </button>
           </div>
         </div>
-        <main className="fp-main">
-          {renderPage()}
-        </main>
+        <main className="fp-main">{renderPage()}</main>
         {showPanic && <PanicMode onClose={() => { setShowPanic(false); setPage("scenarios"); }} />}
       </div>
     </>

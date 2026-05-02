@@ -1,0 +1,194 @@
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  DEMO_ACCOUNT_EMAIL,
+  DEMO_ACCOUNT_PASSWORD,
+  useAuth,
+} from "../store/AppContext.jsx";
+
+function readFinPilotQuizDone() {
+  try {
+    return localStorage.getItem("finpilot_onboarding_done") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function clearAllNesteggLocalStorageKeys() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith("nestegg_")) keys.push(k);
+  }
+  keys.forEach((k) => localStorage.removeItem(k));
+}
+
+export default function DemoModePill() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const {
+    signIn,
+    signOut,
+    ensureDemoAccount,
+    isAuthenticated,
+    isLoading,
+  } = useAuth();
+
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [quizDone, setQuizDone] = useState(readFinPilotQuizDone);
+  const wrapRef = useRef(null);
+
+  const path = location.pathname.replace(/\/+$/, "") || "/";
+
+  useEffect(() => {
+    function onFinPilotQuizDone() {
+      setQuizDone(true);
+    }
+    window.addEventListener("finpilot-onboarding-complete", onFinPilotQuizDone);
+    return () =>
+      window.removeEventListener(
+        "finpilot-onboarding-complete",
+        onFinPilotQuizDone,
+      );
+  }, []);
+
+  useEffect(() => {
+    setQuizDone(readFinPilotQuizDone());
+  }, [location.pathname]);
+
+  /** Hide on auth screens; on `/` hide until FinPilot questions are finished. */
+  const hide =
+    path === "/signin" ||
+    path === "/signup" ||
+    (path === "/" && !quizDone);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocDown(e) {
+      if (wrapRef.current?.contains(e.target)) return;
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocDown);
+    document.addEventListener("touchstart", onDocDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocDown);
+      document.removeEventListener("touchstart", onDocDown);
+    };
+  }, [open]);
+
+  if (hide) return null;
+
+  const disabled = isLoading || busy;
+
+  async function signInAsAlexDemo() {
+    if (disabled) return;
+    setBusy(true);
+    try {
+      ensureDemoAccount();
+      await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
+      navigate("/", { replace: true });
+      setOpen(false);
+    } catch {
+      /* keep panel open on failure */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function signOutAndRestart() {
+    if (disabled) return;
+    signOut();
+    clearAllNesteggLocalStorageKeys();
+    setOpen(false);
+  }
+
+  async function goWithDemoAuth(targetPath) {
+    if (disabled) return;
+    setBusy(true);
+    try {
+      if (!isAuthenticated) {
+        ensureDemoAccount();
+        await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
+      }
+      navigate(targetPath);
+      setOpen(false);
+    } catch {
+      /* auth failed */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const shortcuts = [
+    { label: "Home (FinPilot)", path: "/" },
+    { label: "FinPilot", path: "/finpilot" },
+    { label: "Scenarios", path: "/scenarios" },
+    { label: "Goal setter", path: "/goal" },
+    { label: "Decision log", path: "/decisions" },
+  ];
+
+  return (
+    <div ref={wrapRef} className="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2">
+      {open ? (
+        <div
+          className="mb-1 max-h-[min(70vh,420px)] w-[220px] overflow-y-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-lg"
+          role="menu"
+        >
+          <div className="border-b border-slate-100 px-2 pb-2">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              Demo mode
+            </p>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => void signInAsAlexDemo()}
+            >
+              Sign in as Alex (demo)
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              onClick={signOutAndRestart}
+            >
+              Sign out and restart
+            </button>
+          </div>
+          <div className="px-2 pt-2">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              Jump to
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {shortcuts.map(({ label, path }) => (
+                <li key={path}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={disabled}
+                    className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                    onClick={() => void goWithDemoAuth(path)}
+                  >
+                    {label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-full border border-slate-300 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 shadow-md hover:bg-slate-200"
+        aria-expanded={open}
+      >
+        Demo
+      </button>
+    </div>
+  );
+}
