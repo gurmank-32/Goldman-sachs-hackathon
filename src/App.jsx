@@ -1,27 +1,28 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Dashboard from "./pages/Dashboard.jsx";
-import GoalSetter from "./pages/GoalSetter.jsx";
-import RiskProfiler from "./pages/RiskProfiler.jsx";
-import DecisionLog from "./pages/DecisionLog.jsx";
-import ImpactPreview from "./pages/ImpactPreview.jsx";
-import RebalanceWizard from "./pages/RebalanceWizard.jsx";
-import Scenarios from "./pages/Scenarios.jsx";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import SignIn from "./pages/SignIn.jsx";
+import SignUp from "./pages/SignUp.jsx";
+import { AppProvider } from "./store/AppContext.jsx";
+import FinPilot from "./uploaded/finpilot.jsx";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen min-h-dvh overflow-x-hidden bg-neutral-50 text-neutral-900 antialiased">
+      <AppProvider>
         <Routes>
-          <Route path="/" element={<RiskProfiler />} />
-          <Route path="/goal" element={<GoalSetter />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* Scenario planning */}
-          <Route path="/scenarios" element={<Scenarios />} />
-          <Route path="/impact" element={<ImpactPreview />} />
-          <Route path="/rebalance" element={<RebalanceWizard />} />
-          <Route path="/decisions" element={<DecisionLog />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <FinPilot />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </div>
+      </AppProvider>
     </BrowserRouter>
   );
 }
