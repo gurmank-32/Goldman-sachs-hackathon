@@ -13,6 +13,12 @@ function formatUsd(n) {
   }).format(n);
 }
 
+function formatPct(n) {
+  const num = Number(n) || 0;
+  const roundedUp = num >= 0 ? Math.ceil(num * 100) / 100 : Math.floor(num * 100) / 100;
+  return `${roundedUp.toFixed(2)}%`;
+}
+
 const EMPTY_SLICE_COUNT = 5;
 const EMPTY_COLOR = "#E8E4DC";
 
@@ -36,7 +42,7 @@ function DonutTooltip({ active, payload, formatMoney }) {
       </div>
       <div style={{ fontSize: 13, color: "#0f172a" }}>{formatMoney(row.value)}</div>
       <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-        {row.percentage.toFixed(1)}%
+        {formatPct(row.percentage)}
       </div>
     </div>
   );
@@ -216,7 +222,7 @@ export default function AllocationDonut({
                   {row.label}
                 </span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: "#0A1628" }}>
-                  {row.percentage.toFixed(1)}%
+                  {formatPct(row.percentage)}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 22 }}>

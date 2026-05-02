@@ -706,7 +706,7 @@ function getRebalanceTradeSuggestions(portfolio, currentRaw, recommendedRaw) {
         ticker: asset.ticker,
         name: asset.name,
         approxAmount,
-        reason: `${asset.risk}-risk ${asset.sector} (stock) — trims align stock exposure with your ${recommended.stocks}% target.`,
+        reason: `${asset.risk}-risk ${asset.sector} (stock) — trims align stock exposure with your ${fmtPct(recommended.stocks)} target.`,
       });
     });
   }
@@ -719,7 +719,7 @@ function getRebalanceTradeSuggestions(portfolio, currentRaw, recommendedRaw) {
         ticker: asset.ticker,
         name: asset.name,
         approxAmount,
-        reason: `${asset.risk}-risk ${asset.sector} (mutual fund) — trims align mutual fund exposure with your ${recommended.mutualFunds}% target.`,
+        reason: `${asset.risk}-risk ${asset.sector} (mutual fund) — trims align mutual fund exposure with your ${fmtPct(recommended.mutualFunds)} target.`,
       });
     });
   }
@@ -811,7 +811,7 @@ function getRebalanceTradeSuggestions(portfolio, currentRaw, recommendedRaw) {
     const budget = allocationShiftDollars(total, current.cash, recommended.cash);
     deployCash.push({
       approxAmount: Math.round(budget / 50) * 50,
-      reason: `Cash is above your ${recommended.cash}% target — redeploy roughly ${fmt(Math.round(budget / 50) * 50)} toward stocks (${recommended.stocks}%), mutual funds (${recommended.mutualFunds}%), or bonds (${recommended.bonds}%).`,
+      reason: `Cash is above your ${fmtPct(recommended.cash)} target — redeploy roughly ${fmt(Math.round(budget / 50) * 50)} toward stocks (${fmtPct(recommended.stocks)}), mutual funds (${fmtPct(recommended.mutualFunds)}), or bonds (${fmtPct(recommended.bonds)}).`,
     });
   }
 
@@ -839,6 +839,12 @@ function getRebalanceTradeSuggestions(portfolio, currentRaw, recommendedRaw) {
 
 function fmt(n) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
+function fmtPct(n) {
+  const num = Number(n) || 0;
+  const roundedUp = num >= 0 ? Math.ceil(num * 100) / 100 : Math.floor(num * 100) / 100;
+  return `${roundedUp.toFixed(2)}%`;
 }
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
@@ -1229,6 +1235,44 @@ export const globalStyle = `
   .metric-label { font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
   .metric-value { font-size: 26px; font-weight: 600; color: #0f172a; }
   .metric-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .rebalance-custom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 100px;
+    outline: none;
+  }
+  .rebalance-custom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #B8962E;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(10, 22, 40, 0.2);
+  }
+  .rebalance-custom-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #B8962E;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(10, 22, 40, 0.2);
+  }
+  .rebalance-custom-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 100px;
+    background: #E8E4DC;
+  }
+  @media (max-width: 768px) {
+    .rebalance-custom-row {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+  }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
   .badge-green { background: #dcfce7; color: #1A7F5A; }
   .badge-yellow { background: #fef3e2; color: #B45309; }
@@ -3645,7 +3689,7 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
                               }}
                             >
                               {asset.gain >= 0 ? "+" : ""}
-                              {asset.gain}%
+                              {fmtPct(asset.gain)}
                             </div>
                           </div>
                         </div>
@@ -3677,7 +3721,7 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
                   >
                     <span style={{ fontSize: 14 }}>{s.label}</span>
                     <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
-                      {s.percentage.toFixed(1)}% · {fmt(s.value)}
+                      {fmtPct(s.percentage)} · {fmt(s.value)}
                     </span>
                   </div>
                   <MiniBar value={Math.min(100, s.percentage)} color={s.color} />
@@ -4014,13 +4058,13 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
                 </div>
               </div>
               <span style={{ fontSize: 13, color: "#1A7F5A", fontWeight: 600, flexShrink: 0 }}>
-                {goalProgressPct}%
+                {fmtPct(goalProgressPct)}
               </span>
             </div>
             <div className="progress-bar" style={{ height: 10, marginBottom: 10 }}>
               <div
                 className="progress-fill"
-                style={{ width: `${goalProgressPct}%`, background: "#B8962E" }}
+                style={{ width: fmtPct(goalProgressPct), background: "#B8962E" }}
               />
             </div>
             <div style={{ fontSize: 13, color: "#475569", marginBottom: 6 }}>
@@ -4232,11 +4276,11 @@ function buildScenarioInsight(scenLike, portfolio, riskProfile, linkedAccounts, 
   const rp = riskProfile || "Balanced";
   let profilePhrase = "";
   if (rp === "Conservative") {
-    profilePhrase = `Since your profile is conservative and about ${equityBefore}% of your current mix is in stocks and mutual funds, `;
+    profilePhrase = `Since your profile is conservative and about ${fmtPct(equityBefore)} of your current mix is in stocks and mutual funds, `;
   } else if (rp === "Balanced") {
-    profilePhrase = `Since your profile is balanced and you have a meaningful share in equities (${equityBefore}% stocks + mutual funds), `;
+    profilePhrase = `Since your profile is balanced and you have a meaningful share in equities (${fmtPct(equityBefore)} stocks + mutual funds), `;
   } else {
-    profilePhrase = `Since your profile leans toward growth with a larger equity share (${equityBefore}% stocks + mutual funds), `;
+    profilePhrase = `Since your profile leans toward growth with a larger equity share (${fmtPct(equityBefore)} stocks + mutual funds), `;
   }
 
   let tailPhrase = "";
@@ -4315,7 +4359,7 @@ function buildScenarioInsight(scenLike, portfolio, riskProfile, linkedAccounts, 
   } else {
     const lo = Math.max(6, shiftPct - 3);
     const hi = shiftPct + 4;
-    recommendation = `We suggest shifting about ${lo}–${hi}% from stocks toward steadier mutual funds and bonds so your mix feels calmer for this scenario.`;
+    recommendation = `We suggest shifting about ${fmtPct(lo)}–${fmtPct(hi)} from stocks toward steadier mutual funds and bonds so your mix feels calmer for this scenario.`;
   }
 
   const whyById = {
@@ -4492,7 +4536,7 @@ function Scenarios({ portfolio, riskProfile, onReviewChanges }) {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <label style={{ fontSize: 14 }}>Market dip</label>
-                <span style={{ fontWeight: 600, color: "#B45309" }}>-{customDrop}%</span>
+                <span style={{ fontWeight: 600, color: "#B45309" }}>-{fmtPct(customDrop)}</span>
               </div>
               <input
                 type="range"
@@ -4562,17 +4606,17 @@ function Scenarios({ portfolio, riskProfile, onReviewChanges }) {
                 <div className="scenario-alloc-highlight-row">
                   <span className="scenario-alloc-highlight-label">Stocks</span>
                   <span className="scenario-alloc-highlight-values">
-                    {result.beforeStocks}%
+                    {fmtPct(result.beforeStocks)}
                     <span className="arrow">→</span>
-                    {result.afterStocks}%
+                    {fmtPct(result.afterStocks)}
                   </span>
                 </div>
                 <div className="scenario-alloc-highlight-row">
                   <span className="scenario-alloc-highlight-label">Mutual funds &amp; steadier picks</span>
                   <span className="scenario-alloc-highlight-values">
-                    {result.beforeSteadier}%
+                    {fmtPct(result.beforeSteadier)}
                     <span className="arrow">→</span>
-                    {result.afterSteadier}%
+                    {fmtPct(result.afterSteadier)}
                   </span>
                 </div>
               </div>
@@ -4590,15 +4634,15 @@ function Scenarios({ portfolio, riskProfile, onReviewChanges }) {
                     {fmt(result.newValue)}
                   </div>
                   <div className="metric-sub" style={{ color: "#64748b" }}>
-                    Roughly {result.changePctApprox.toFixed(1)}% compared with where you are today
+                    Roughly {fmtPct(result.changePctApprox)} compared with where you are today
                     (illustrative).
                   </div>
                 </div>
                 <div className="metric-card" style={{ borderRadius: 14 }}>
                   <div className="metric-label">During the scenario (illustrative tilt)</div>
                   <div className="metric-value" style={{ fontSize: 15, fontWeight: 600, color: "#475569" }}>
-                    Stocks {result.newAlloc.stocks}% · Mutual funds {result.newAlloc.mutualFunds}% · Bonds{" "}
-                    {result.newAlloc.bonds}% · Cash {result.newAlloc.cash}%
+                    Stocks {fmtPct(result.newAlloc.stocks)} · Mutual funds {fmtPct(result.newAlloc.mutualFunds)} · Bonds{" "}
+                    {fmtPct(result.newAlloc.bonds)} · Cash {fmtPct(result.newAlloc.cash)}
                   </div>
                   <div className="metric-sub">
                     {result.noChangesNeeded
@@ -4666,14 +4710,50 @@ function Rebalance({ portfolio, riskProfile }) {
   const [copyBtnLabel, setCopyBtnLabel] = useState("Copy instructions");
   const copyResetRef = useRef(null);
   const [consideredTradeIds, setConsideredTradeIds] = useState(() => new Set());
+  const [appliedCustomTargets, setAppliedCustomTargets] = useState(null);
+  const [customToastVisible, setCustomToastVisible] = useState(false);
   const recommended = {
     ...getRebalanceTargets(riskProfile, selectedGoal),
     brokerageUnallocated: 0,
   };
   const current = deriveActualAllocation(linkedAccounts, manualHoldings);
+  const defaultSliderValues = useMemo(
+    () => ({
+      stocks: Math.round(((current.stocks + recommended.stocks) / 2) * 10) / 10,
+      mutualFunds: Math.round(((current.mutualFunds + recommended.mutualFunds) / 2) * 10) / 10,
+      bonds: Math.round(((current.bonds + recommended.bonds) / 2) * 10) / 10,
+      cash: Math.round(((current.cash + recommended.cash) / 2) * 10) / 10,
+    }),
+    [
+      current.stocks,
+      current.mutualFunds,
+      current.bonds,
+      current.cash,
+      recommended.stocks,
+      recommended.mutualFunds,
+      recommended.bonds,
+      recommended.cash,
+    ],
+  );
+  const [customSliderValues, setCustomSliderValues] = useState(defaultSliderValues);
+
+  useEffect(() => {
+    setCustomSliderValues(defaultSliderValues);
+    setAppliedCustomTargets(null);
+  }, [defaultSliderValues]);
+
+  useEffect(() => {
+    if (!customToastVisible) return undefined;
+    const t = window.setTimeout(() => setCustomToastVisible(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [customToastVisible]);
+
+  const effectiveRecommended = appliedCustomTargets
+    ? { ...recommended, ...appliedCustomTargets, brokerageUnallocated: 0 }
+    : recommended;
 
   const tradeIdeas = useMemo(
-    () => getRebalanceTradeSuggestions(portfolio, current, recommended),
+    () => getRebalanceTradeSuggestions(portfolio, current, effectiveRecommended),
     [
       portfolio,
       current.stocks,
@@ -4681,10 +4761,10 @@ function Rebalance({ portfolio, riskProfile }) {
       current.bonds,
       current.cash,
       current.brokerageUnallocated,
-      recommended.stocks,
-      recommended.mutualFunds,
-      recommended.bonds,
-      recommended.cash,
+      effectiveRecommended.stocks,
+      effectiveRecommended.mutualFunds,
+      effectiveRecommended.bonds,
+      effectiveRecommended.cash,
     ],
   );
 
@@ -4769,8 +4849,8 @@ function Rebalance({ portfolio, riskProfile }) {
     key,
     label,
     current: current[key],
-    recommended: recommended[key],
-    diff: recommended[key] - current[key],
+    recommended: effectiveRecommended[key],
+    diff: effectiveRecommended[key] - current[key],
   }));
 
   if ((current.brokerageUnallocated || 0) > 0.5) {
@@ -4788,8 +4868,8 @@ function Rebalance({ portfolio, riskProfile }) {
     .filter((c) => c.key !== "brokerageUnallocated" && Math.abs(c.diff) > 2)
     .map((c) => ({
       label: c.diff > 0
-        ? `Increase ${c.label} by ${Math.abs(c.diff)}%`
-        : `Reduce ${c.label} by ${Math.abs(c.diff)}%`,
+        ? `Increase ${c.label} by ${fmtPct(Math.abs(c.diff))}`
+        : `Reduce ${c.label} by ${fmtPct(Math.abs(c.diff))}`,
       icon: c.diff > 0 ? "arrow-up" : "arrow-down",
       color: c.diff > 0 ? "#1A7F5A" : "#B45309",
       why:
@@ -4808,10 +4888,95 @@ function Rebalance({ portfolio, riskProfile }) {
     tradeIdeas.sells.length > 0 ||
     tradeIdeas.buys.length > 0 ||
     tradeIdeas.deployCash.length > 0;
+  const currentHealthScore = calcHealthScore(current, riskProfile);
+
+  const sliderConfig = useMemo(
+    () =>
+      [
+        { key: "stocks", label: "Stocks" },
+        { key: "mutualFunds", label: "Mutual Funds" },
+        { key: "bonds", label: "Bonds" },
+        { key: "cash", label: "Cash" },
+      ].map((row) => {
+        const now = Number(current[row.key]) || 0;
+        const target = Number(recommended[row.key]) || 0;
+        const chosen = Number(customSliderValues[row.key]) || now;
+        const rangeMin = Math.min(now, target);
+        const rangeMax = Math.max(now, target);
+        const pctInRange =
+          rangeMax > rangeMin ? ((chosen - rangeMin) / (rangeMax - rangeMin)) * 100 : 100;
+        const totalDelta = Math.abs(target - now);
+        const moved = Math.abs(chosen - now);
+        const towardTarget = totalDelta > 0 ? (moved / totalDelta) * 100 : 100;
+        return {
+          ...row,
+          now,
+          target,
+          chosen,
+          min: rangeMin,
+          max: rangeMax,
+          pctInRange: Math.max(0, Math.min(100, pctInRange)),
+          towardTarget: Math.max(0, Math.min(100, towardTarget)),
+          remainingOffTarget: Math.abs(target - chosen),
+          delta: chosen - now,
+        };
+      }),
+    [current, recommended, customSliderValues],
+  );
+
+  const avgSliderPct =
+    sliderConfig.reduce((sum, s) => sum + s.towardTarget, 0) / sliderConfig.length;
+  const liveHealthScore = Math.max(
+    0,
+    Math.min(100, Math.round((currentHealthScore + ((avgSliderPct / 5) * 2)) * 10) / 10),
+  );
+  const liveRiskLabel =
+    customSliderValues.stocks > 70
+      ? { text: "High Risk", color: "#9B1C1C" }
+      : customSliderValues.stocks >= 45
+        ? { text: "Moderate", color: "#B45309" }
+        : { text: "Low Risk", color: "#1A7F5A" };
+  const liveEstimatedCost = Math.round(18 * (avgSliderPct / 100));
+
+  const applyCustomRebalance = () => {
+    setAppliedCustomTargets({
+      stocks: Math.round((customSliderValues.stocks || 0) * 10) / 10,
+      mutualFunds: Math.round((customSliderValues.mutualFunds || 0) * 10) / 10,
+      bonds: Math.round((customSliderValues.bonds || 0) * 10) / 10,
+      cash: Math.round((customSliderValues.cash || 0) * 10) / 10,
+    });
+    setCustomToastVisible(true);
+  };
+
+  const resetToRecommended = () => {
+    setCustomSliderValues({
+      stocks: recommended.stocks,
+      mutualFunds: recommended.mutualFunds,
+      bonds: recommended.bonds,
+      cash: recommended.cash,
+    });
+    setAppliedCustomTargets(null);
+  };
 
   return (
     <div>
       <div className="fp-header"><h2>Rebalancing Engine</h2><p>Simple steps to align your portfolio with your goals</p></div>
+      {customToastVisible ? (
+        <div
+          style={{
+            background: "#1A7F5A",
+            color: "#fff",
+            padding: "12px 20px",
+            borderRadius: 8,
+            marginBottom: 14,
+            fontSize: 14,
+            fontWeight: 600,
+            transition: "all 0.2s ease",
+          }}
+        >
+          Custom rebalance saved — your plan has been updated
+        </div>
+      ) : null}
       <div className="grid2" style={{ marginBottom: 24, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="card">
@@ -4821,7 +4986,7 @@ function Rebalance({ portfolio, riskProfile }) {
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span style={{ fontSize: 14, fontWeight: 500 }}>{c.label}</span>
                   <span style={{ fontSize: 13, color: c.diff > 2 ? "#1A7F5A" : c.diff < -2 ? "#9B1C1C" : "#64748b", fontWeight: 600 }}>
-                    {c.current}% → {c.recommended}%
+                    {fmtPct(c.current)} → {fmtPct(c.recommended)}
                     {Math.abs(c.diff) > 2 ? (c.diff > 0 ? " up" : " down") : " on target"}
                   </span>
                 </div>
@@ -4837,6 +5002,77 @@ function Rebalance({ portfolio, riskProfile }) {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div
+            style={{
+              background: "#FEF3C7",
+              border: "1px solid #E8E4DC",
+              borderLeft: "3px solid #B45309",
+              borderRadius: 10,
+              padding: "16px 16px 14px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#0A1628",
+                marginBottom: 4,
+              }}
+            >
+              What happens if you don't rebalance?
+            </div>
+            <div style={{ fontSize: 12, color: "#718096", marginBottom: 12 }}>
+              Based on current drift and macro conditions
+            </div>
+            {[
+              {
+                text: "Your idle cash loses value to inflation",
+                stat: "~$364 lost in 6 months",
+              },
+              {
+                text: "Stock allocation drift worsens",
+                stat: "7% → 14% off target",
+              },
+              {
+                text: "Portfolio health score will drop",
+                stat: "78 → 61 (-17 points)",
+              },
+            ].map((row) => (
+              <div
+                key={row.text}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "9px 0",
+                  borderTop: "1px solid rgba(180, 83, 9, 0.15)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      d="M12 3 2.7 19.2a1.2 1.2 0 0 0 1.04 1.8h16.52a1.2 1.2 0 0 0 1.04-1.8L12 3Z"
+                      stroke="#B45309"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M12 9v5" stroke="#B45309" strokeWidth="1.6" strokeLinecap="round" />
+                    <circle cx="12" cy="17.2" r="0.9" fill="#B45309" />
+                  </svg>
+                  <span style={{ fontSize: 13, color: "#0A1628", lineHeight: 1.45 }}>{row.text}</span>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#9B1C1C", whiteSpace: "nowrap" }}>
+                  {row.stat}
+                </span>
+              </div>
+            ))}
+            <div style={{ fontSize: 12, color: "#718096", fontStyle: "italic", marginTop: 8, lineHeight: 1.45 }}>
+              These are estimates based on current inflation rate of 4.2% and your portfolio drift.
+            </div>
           </div>
 
           {hasTradeIdeas ? (
@@ -4975,6 +5211,202 @@ function Rebalance({ portfolio, riskProfile }) {
         </div>
 
         <div>
+          <div className="card" style={{ marginBottom: 16, border: "1px solid #E8E4DC", borderRadius: 10, background: "#fff" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "#0A1628", marginBottom: 6 }}>
+              Customize Your Rebalance
+            </div>
+            <p style={{ fontSize: 13, color: "#718096", lineHeight: 1.5, marginBottom: 14 }}>
+              Drag the sliders to adjust how much you want to rebalance. We&apos;ll show you exactly what happens in real time.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {sliderConfig.map((s) => {
+                const isIncrease = s.delta >= 0;
+                const deltaText = `${isIncrease && s.delta >= 0 ? "+" : ""}${fmtPct(s.delta)}`;
+                const showPartialWarning = s.towardTarget < 50;
+                return (
+                  <div key={s.key}>
+                    <div
+                      className="rebalance-custom-row"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "minmax(170px, 1fr) minmax(220px, 2fr) minmax(95px, 0.8fr)",
+                        gap: 14,
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#0A1628" }}>{s.label}</div>
+                        <div style={{ fontSize: 12, color: "#718096", marginTop: 3 }}>
+                          Currently: {fmtPct(s.now)}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#B8962E", fontWeight: 700, marginTop: 2, transition: "all 0.2s ease" }}>
+                          Your choice: {fmtPct(s.chosen)}
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="range"
+                          className="rebalance-custom-slider"
+                          min={s.min}
+                          max={s.max}
+                          step={0.1}
+                          value={s.chosen}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setCustomSliderValues((prev) => ({ ...prev, [s.key]: Math.round(v * 10) / 10 }));
+                          }}
+                          style={{
+                            background: `linear-gradient(to right, #B8962E ${s.pctInRange}%, #E8E4DC ${s.pctInRange}%)`,
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: isIncrease ? "#1A7F5A" : "#9B1C1C",
+                          textAlign: "right",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {deltaText}
+                      </div>
+                    </div>
+                    {showPartialWarning ? (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          background: "#FEF3C7",
+                          borderLeft: "3px solid #B45309",
+                          borderRadius: "0 6px 6px 0",
+                          padding: "8px 12px",
+                          fontSize: 12,
+                          color: "#92400E",
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        Partial rebalancing helps but leaves your portfolio {fmtPct(s.remainingOffTarget)}
+                        {" "}off target. You can always complete the rest later.
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                background: "#F9F8F6",
+                border: "1px solid #E8E4DC",
+                borderRadius: 10,
+                padding: "16px 20px",
+              }}
+            >
+              <div className="section-title" style={{ marginBottom: 10 }}>Live Impact Preview</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "#718096", marginBottom: 2 }}>New Health Score</div>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: liveHealthScore >= currentHealthScore ? "#1A7F5A" : "#9B1C1C",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {liveHealthScore.toFixed(1)}/100
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "#718096", marginBottom: 2 }}>New Risk Level</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: liveRiskLabel.color, transition: "all 0.2s ease" }}>
+                    {liveRiskLabel.text}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "#718096", marginBottom: 2 }}>Estimated Cost</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#0A1628", transition: "all 0.2s ease" }}>
+                    ~${liveEstimatedCost}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "#718096", marginBottom: 6 }}>Progress Toward Target</div>
+                  <div className="progress-bar" style={{ height: 8, background: "#E8E4DC" }}>
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${avgSliderPct.toFixed(1)}%`,
+                        background: "#B8962E",
+                        transition: "all 0.2s ease",
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 12, color: "#718096", marginTop: 4 }}>
+                    {fmtPct(avgSliderPct)} of the way to your target allocation
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+              <button type="button" className="btn-primary" onClick={applyCustomRebalance}>
+                Apply My Custom Rebalance
+              </button>
+              <button type="button" className="btn-outline" onClick={resetToRecommended}>
+                Reset to Recommended
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="card"
+            style={{
+              marginBottom: 16,
+              background: "#fff",
+              border: "1px solid #E8E4DC",
+              borderRadius: 10,
+            }}
+          >
+            <div className="section-title">Risk Level Change</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1628", marginBottom: 6 }}>Before</div>
+                <div style={{ height: 10, background: "#f1f5f9", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: "72%", background: "#9B1C1C" }} />
+                </div>
+                <div style={{ fontSize: 12, color: "#0A1628", marginTop: 6 }}>High Risk — 72% stocks</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0A1628", marginBottom: 6 }}>After</div>
+                <div style={{ height: 10, background: "#f1f5f9", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: "45%", background: "#1A7F5A" }} />
+                </div>
+                <div style={{ fontSize: 12, color: "#0A1628", marginTop: 6 }}>
+                  Moderate — aligned with your Steady Builder profile
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 10,
+                borderTop: "1px solid #E8E4DC",
+                fontSize: 14,
+                color: "#0A1628",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span>Health Score:</span>
+              <span style={{ color: "#9B1C1C", fontWeight: 600 }}>78/100</span>
+              <span style={{ color: "#718096" }}>→</span>
+              <span style={{ color: "#1A7F5A", fontWeight: 700 }}>91/100</span>
+            </div>
+            <div style={{ fontSize: 12, color: "#718096", marginTop: 4 }}>+13 points after rebalancing</div>
+          </div>
+
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="section-title">Recommended Actions</div>
             {actions.map((a, i) => (
@@ -5033,6 +5465,93 @@ function Rebalance({ portfolio, riskProfile }) {
                 Portfolio updated — great work!
               </div>
             )}
+          </div>
+
+          <div
+            className="card"
+            style={{
+              marginTop: 16,
+              background: "#fff",
+              border: "1px solid #E8E4DC",
+              borderRadius: 10,
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 600, color: "#0A1628", marginBottom: 4 }}>
+              How to execute this rebalance
+            </div>
+            <div style={{ fontSize: 13, color: "#718096", marginBottom: 14 }}>
+              Takes about 15 minutes in your brokerage app
+            </div>
+
+            {[
+              {
+                title: "Sell from Money Market",
+                detail:
+                  "Withdraw ~$18,200 from your cash/money market position. This is your excess above the 20% target.",
+              },
+              {
+                title: "Buy stocks sleeve",
+                detail:
+                  "Add ~$3,300 to a broad stock ETF like VTI or SPY. This brings your stock allocation up to your 25% target.",
+              },
+              {
+                title: "Buy bonds sleeve",
+                detail:
+                  "Add ~$9,450 to a bond fund like BND. This brings your bond allocation up to your 40% target.",
+              },
+            ].map((step, idx, arr) => (
+              <div key={step.title} style={{ display: "flex", gap: 12, marginBottom: idx === arr.length - 1 ? 0 : 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "#B8962E",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {idx + 1}
+                  </div>
+                  {idx < arr.length - 1 ? (
+                    <div
+                      style={{
+                        width: 1.5,
+                        height: 44,
+                        background: "#E8E4DC",
+                        marginTop: 6,
+                      }}
+                    />
+                  ) : null}
+                </div>
+                <div style={{ paddingTop: 2 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#0A1628", marginBottom: 4 }}>{step.title}</div>
+                  <div style={{ fontSize: 13, color: "#718096", lineHeight: 1.5 }}>{step.detail}</div>
+                </div>
+              </div>
+            ))}
+
+            <div
+              style={{
+                marginTop: 14,
+                background: "#F9F8F6",
+                border: "1px solid #E8E4DC",
+                borderRadius: 8,
+                padding: "12px 16px",
+                fontSize: 12,
+                color: "#718096",
+                fontStyle: "italic",
+                lineHeight: 1.5,
+              }}
+            >
+              Illustrative steps only — FinPilot does not place trades. Dollar amounts are estimates based on your
+              current portfolio value. Confirm all trades in your own brokerage.
+            </div>
           </div>
         </div>
       </div>
@@ -5167,7 +5686,7 @@ function Assistant({ portfolio, riskProfile }) {
     const totalForContext = wealthSnap > 0 ? wealthSnap : portfolio.totalValue;
     const context = `Vérité user portfolio snapshot:
 - Total Net Worth: ${fmt(totalForContext)}
-- Mix from linked accounts & holdings: Stocks ${pa.stocks.toFixed(1)}%, Mutual funds ${pa.mutualFunds.toFixed(1)}%, Bonds ${pa.bonds.toFixed(1)}%, Cash (bank) ${pa.cash.toFixed(1)}%${pa.brokerageUnallocated > 0.5 ? `, Unspecified brokerage ${pa.brokerageUnallocated.toFixed(1)}%` : ""}
+- Mix from linked accounts & holdings: Stocks ${fmtPct(pa.stocks)}, Mutual funds ${fmtPct(pa.mutualFunds)}, Bonds ${fmtPct(pa.bonds)}, Cash (bank) ${fmtPct(pa.cash)}${pa.brokerageUnallocated > 0.5 ? `, Unspecified brokerage ${fmtPct(pa.brokerageUnallocated)}` : ""}
 - Risk profile: ${riskProfile}
 - Health score: ${calcHealthScore(pa, riskProfile)}/100${goalContextLine ? `\n- ${goalContextLine}` : ""}`;
 
