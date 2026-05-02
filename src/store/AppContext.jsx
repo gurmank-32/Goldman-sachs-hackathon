@@ -19,7 +19,7 @@ import {
 
 export { ONBOARDING_COMPLETE_KEY };
 import {
-  FINPILOT_ONBOARDING_KEY,
+  VERITE_ONBOARDING_KEY,
   SIGNUP_QUIZ_QUESTIONS,
   buildSignupProfilePayload,
   mergeGoalWithTargets,
@@ -132,7 +132,7 @@ function computeInitialAppState() {
 export const SIGN_IN_ERROR_EMAIL_NOT_FOUND = "SIGN_IN_EMAIL_NOT_FOUND";
 export const SIGN_IN_ERROR_WRONG_PASSWORD = "SIGN_IN_WRONG_PASSWORD";
 
-export const DEMO_ACCOUNT_EMAIL = "alex@nestegg.demo";
+export const DEMO_ACCOUNT_EMAIL = "alex@verite.demo";
 export const DEMO_ACCOUNT_PASSWORD = "Demo1234!";
 
 function delay(ms) {
@@ -362,7 +362,7 @@ export function AppProvider({ children }) {
       if (merged) profileBundle = { ...profileBundle, goal: merged };
     }
     try {
-      localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
+      localStorage.removeItem(VERITE_ONBOARDING_KEY);
       localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
       localStorage.setItem(PENDING_LINK_ACCOUNTS_KEY, "true");
       localStorage.setItem(
@@ -468,7 +468,7 @@ export function AppProvider({ children }) {
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
     }
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
-    localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
+    localStorage.setItem(VERITE_ONBOARDING_KEY, "true");
     const demoGoal = {
       type: "retire",
       label: "Retire comfortably",

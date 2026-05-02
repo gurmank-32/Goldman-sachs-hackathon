@@ -1,9 +1,10 @@
 /**
- * Shared signup + FinPilot onboarding questions (same scoring).
- * Options include emoji for signup UI and icon keys for FinPilot SVG icons.
+ * Shared signup + Vérité onboarding questions (same scoring).
+ * Options include emoji for signup UI and icon keys for dashboard SVG icons.
  */
 
-export const FINPILOT_ONBOARDING_KEY = "finpilot_onboarding_done";
+/** Kept as legacy storage id so existing users keep onboarding progress. */
+export const VERITE_ONBOARDING_KEY = "finpilot_onboarding_done";
 
 export const SIGNUP_QUIZ_QUESTIONS = [
   {
@@ -222,7 +223,7 @@ export function finPilotRiskFromQuizScore(score) {
   return "Aggressive";
 }
 
-/** Canonical goal `type` values for `nestegg_user_goal` + AppContext. */
+/** Canonical goal `type` values for user goal storage + AppContext. */
 const GOAL_TYPES_BY_INDEX = ["home", "education", "retire", "grow", "protect"];
 
 const GOAL_BASE_AMOUNTS = {
@@ -283,7 +284,7 @@ export function normalizeStoredUserGoal(raw) {
 }
 
 /**
- * Build the persisted user goal from full quiz option indices (signup or FinPilot onboarding).
+ * Build the persisted user goal from full quiz option indices (signup or in-app onboarding).
  * Uses goal choice, timeline (target year), and amount tier (target size).
  * @param {number[]} optionIndices
  */
@@ -308,7 +309,7 @@ export function mergeGoalWithTargets(goal, targetAmount, targetYear) {
   });
 }
 
-export function buildNestEggUserGoal(optionIndices) {
+export function buildVeriteUserGoal(optionIndices) {
   if (!Array.isArray(optionIndices) || optionIndices.length < SIGNUP_QUIZ_QUESTIONS.length) {
     return null;
   }
@@ -346,7 +347,7 @@ export function buildNestEggUserGoal(optionIndices) {
 export function buildSignupProfilePayload(optionIndices, quizAnswersSnapshot) {
   const score = signupQuizScore(optionIndices);
   const finPilotRiskProfile = finPilotRiskFromQuizScore(score);
-  const goal = buildNestEggUserGoal(optionIndices);
+  const goal = buildVeriteUserGoal(optionIndices);
   const minScore = 6;
   const maxScore = 22;
   const riskScore = Math.round(

@@ -6,7 +6,6 @@ export const ALLOCATION_COLORS = {
   stocks: "#B8962E",
   mutualFunds: "#7C3AED",
   bonds: "#0A1628",
-  cash: "#9CA3AF",
 };
 
 const LABELS = {
@@ -15,7 +14,6 @@ const LABELS = {
   stocks: "Stocks",
   mutualFunds: "Mutual funds",
   bonds: "Bonds",
-  cash: "Cash",
 };
 
 const RETIREMENT_STYLE_WEIGHTS = {
@@ -39,6 +37,24 @@ function bankSubType(a) {
   if (s === "checking") return "checking";
   if (s === "savings") return "savings";
   return null;
+}
+
+/** Spread sleeve "cash" across stocks / mutual funds / bonds for display (no separate cash ring slice). */
+function mergeInvestedCashIntoSecurities(stocks, mutualFunds, bonds, cashInvested) {
+  const c = Math.max(0, Number(cashInvested) || 0);
+  if (c <= 0) return { stocks, mutualFunds, bonds };
+  let s = Math.max(0, stocks);
+  let m = Math.max(0, mutualFunds);
+  let b = Math.max(0, bonds);
+  const sec = s + m + b;
+  if (sec <= 0) {
+    const third = c / 3;
+    return { stocks: s + third, mutualFunds: m + third, bonds: b + third };
+  }
+  s += c * (s / sec);
+  m += c * (m / sec);
+  b += c * (b / sec);
+  return { stocks: s, mutualFunds: m, bonds: b };
 }
 
 function scaleBreakdownToTotal(stocks, mutualFunds, bonds, cash, total) {
@@ -69,7 +85,6 @@ function scaleBreakdownToTotal(stocks, mutualFunds, bonds, cash, total) {
  *   stocks?: AllocationSlice,
  *   mutualFunds?: AllocationSlice,
  *   bonds?: AllocationSlice,
- *   cash?: AllocationSlice,
  *   total: number,
  * }}
  */
@@ -151,8 +166,12 @@ export function calculateAllocationBreakdown(linkedAccounts, manualHoldings) {
     else stocks += v;
   }
 
-  const total =
-    checking + savings + stocks + mutualFunds + bonds + cashInvested;
+  const merged = mergeInvestedCashIntoSecurities(stocks, mutualFunds, bonds, cashInvested);
+  stocks = merged.stocks;
+  mutualFunds = merged.mutualFunds;
+  bonds = merged.bonds;
+
+  const total = checking + savings + stocks + mutualFunds + bonds;
 
   const mk = (key, value) => {
     if (value <= 0) return undefined;
@@ -170,7 +189,6 @@ export function calculateAllocationBreakdown(linkedAccounts, manualHoldings) {
     stocks: mk("stocks", stocks),
     mutualFunds: mk("mutualFunds", mutualFunds),
     bonds: mk("bonds", bonds),
-    cash: mk("cash", cashInvested),
     total,
   };
 }
@@ -191,9 +209,7 @@ export function toDerivedRiskAllocation(breakdown) {
     };
   }
   const liq =
-    (breakdown.checking?.value || 0) +
-    (breakdown.savings?.value || 0) +
-    (breakdown.cash?.value || 0);
+    (breakdown.checking?.value || 0) + (breakdown.savings?.value || 0);
   return {
     stocks: ((breakdown.stocks?.value || 0) / t) * 100,
     mutualFunds: ((breakdown.mutualFunds?.value || 0) / t) * 100,
@@ -205,14 +221,7 @@ export function toDerivedRiskAllocation(breakdown) {
 
 /** Legend rows sorted by value descending. */
 export function allocationBreakdownToLegendRows(breakdown) {
-  const keys = [
-    "checking",
-    "savings",
-    "stocks",
-    "mutualFunds",
-    "bonds",
-    "cash",
-  ];
+  const keys = ["checking", "savings", "stocks", "mutualFunds", "bonds"];
   const rows = keys
     .map((k) => {
       const s = breakdown[k];

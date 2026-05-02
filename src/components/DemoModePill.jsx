@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FINPILOT_ONBOARDING_KEY } from "../constants/signupQuiz.js";
+import { VERITE_ONBOARDING_KEY } from "../constants/signupQuiz.js";
 import {
   DEMO_ACCOUNT_EMAIL,
   DEMO_ACCOUNT_PASSWORD,
@@ -15,7 +15,7 @@ function clearAllNesteggLocalStorageKeys() {
   }
   keys.forEach((k) => localStorage.removeItem(k));
   try {
-    localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
+    localStorage.removeItem(VERITE_ONBOARDING_KEY);
   } catch {
     /* ignore */
   }
@@ -144,7 +144,7 @@ export default function DemoModePill() {
               className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
               onClick={() => void goHomeWithDemoAuth()}
             >
-              Open FinPilot (home)
+              Open Vérité (home)
             </button>
           </div>
         </div>

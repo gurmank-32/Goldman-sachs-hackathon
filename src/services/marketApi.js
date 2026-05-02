@@ -26,7 +26,7 @@ export async function checkHealth() {
 }
 
 /**
- * POST /api/ai/ask — FinPilot assistant (Gemini on the backend).
+ * POST /api/ai/ask — Vérité assistant (Gemini on the backend).
  * @param {string} question
  * @param {string} [context] — portfolio facts
  * @param {Array<{ role: string, content: string }>} [history] — prior turns (oldest → newest)

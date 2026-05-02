@@ -1,4 +1,6 @@
-# NestEgg demo script (auth-aware)
+# Vérité demo script (auth-aware)
+
+Tagline: **Know what to do next.**
 
 Use a fresh browser profile or clear site data (`Application → Local Storage → Clear`) between runs if you need to repeat flows.
 
@@ -8,7 +10,7 @@ Use a fresh browser profile or clear site data (`Application → Local Storage �
 2. Go to **`/signup`** → create an account (passwords are stored encoded locally, not shown in UI).
 3. After sign-up → **`/`** risk profiler → **Continue to goal →** **`/goal`** → **Let’s go** → **`/dashboard`**.
 4. Confirm greeting + avatar use your name (fallback: **Investor**).
-5. Open **FinPilot** / **Scenarios** from the dashboard links as needed.
+5. Open **Dashboard** / **What-If Scenarios** from the sidebar as needed.
 6. **Sign out** from the avatar menu → **`/signin`**.
 
 ## 2. Returning user
@@ -19,7 +21,7 @@ Use a fresh browser profile or clear site data (`Application → Local Storage �
 ## 3. Judge / demo shortcut
 
 1. On **`/signin`** (dev build): **Use demo account →** or use the floating **Demo** pill on any authenticated screen.
-2. **Sign in as Alex (demo)** seeds **`alex@nestegg.demo`**, onboarding, and mock portfolio context → **`/dashboard`**.
+2. **Sign in as Alex (demo)** seeds **`alex@verite.demo`**, onboarding, and mock portfolio context → **`/dashboard`**.
 3. Use **Jump to** targets in the demo pill (auto signs in first if logged out).
 4. **Sign out and restart** clears all **`nestegg_*`** keys and returns to **`/signin`**.
 

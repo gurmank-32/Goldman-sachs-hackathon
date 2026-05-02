@@ -396,7 +396,7 @@ def api_ai_explain_scenario():
     scenario = data.get("scenario") or data.get("title") or ""
     details = data.get("details") or data.get("context") or ""
     portfolio_ctx = data.get("portfolioContext") or ""
-    prompt = f"""You are FinPilot, a friendly financial copilot. Explain this market scenario in plain English for a beginner.
+    prompt = f"""You are Vérité, a friendly financial guide. Explain this market scenario in plain English for a beginner.
 No jargon like alpha, beta, or Sharpe. 2-4 short paragraphs max. Use at most one emoji per paragraph.
 
 Scenario: {scenario}
@@ -417,7 +417,7 @@ def api_ai_explain_action():
     data = request.get_json(silent=True) or {}
     action = data.get("action") or data.get("description") or ""
     why = data.get("reason") or ""
-    prompt = f"""You are FinPilot. Briefly explain what this portfolio action means for a retail investor and one pros/cons thought. Under 120 words. Plain English.
+    prompt = f"""You are Vérité. Briefly explain what this portfolio action means for a retail investor and one pros/cons thought. Under 120 words. Plain English.
 
 Action: {action}
 Reason given: {why}
@@ -435,7 +435,7 @@ def api_ai_portfolio_health():
     """Narrative portfolio health summary from structured facts."""
     data = request.get_json(silent=True) or {}
     facts = data.get("facts") or data
-    prompt = f"""You are FinPilot. Given these portfolio facts as JSON or text, give a warm, honest health summary in plain English (no jargon). 3-5 sentences. Mention diversification and risk in simple terms.
+    prompt = f"""You are Vérité. Given these portfolio facts as JSON or text, give a warm, honest health summary in plain English (no jargon). 3-5 sentences. Mention diversification and risk in simple terms.
 
 Facts:
 {facts}
@@ -476,7 +476,7 @@ def api_ai_ask():
         "\n".join(history_lines) if history_lines else "(no prior messages in this thread)"
     )
 
-    prompt = f"""You are FinPilot, a friendly financial coach for beginners using plain English.
+    prompt = f"""You are Vérité, a friendly financial coach for beginners using plain English.
 
 Your TOP priority is to answer the user's CURRENT question below — stay on topic. Briefly acknowledge what they asked before you answer so it's obvious you're responding to them. Do not pivot to unrelated generic investing lectures.
 
@@ -510,7 +510,7 @@ def api_ai_test():
                 "message": "GEMINI_API_KEY not set or model unavailable",
             }
         )
-    text, err = _gemini_generate('Reply with exactly: "FinPilot backend OK"')
+    text, err = _gemini_generate('Reply with exactly: "Vérité backend OK"')
     if text is None:
         return jsonify({"ok": False, "gemini": True, "error": err}), 500
     return jsonify({"ok": True, "gemini": True, "reply": text})
@@ -519,5 +519,5 @@ def api_ai_test():
 if __name__ == "__main__":
     # Default 5020: avoids macOS AirPlay on 5000 and common Flask collisions on 5001.
     _port = int(os.getenv("FLASK_PORT", "5020"))
-    print(f"FinPilot API: http://127.0.0.1:{_port}")
+    print(f"Vérité API: http://127.0.0.1:{_port}")
     app.run(debug=True, port=_port)

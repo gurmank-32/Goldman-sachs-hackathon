@@ -29,9 +29,9 @@ import {
   PENDING_LINK_ACCOUNTS_KEY,
 } from "../constants/inappOnboarding.js";
 import {
-  FINPILOT_ONBOARDING_KEY,
+  VERITE_ONBOARDING_KEY,
   SIGNUP_QUIZ_QUESTIONS as ONBOARDING_QUESTIONS,
-  buildNestEggUserGoal,
+  buildVeriteUserGoal,
   finPilotRiskFromQuizScore as getRiskProfile,
   mergeGoalWithTargets,
   normalizeStoredUserGoal,
@@ -738,7 +738,7 @@ function getRebalanceTradeSuggestions(portfolio, currentRaw, recommendedRaw) {
         name: primary.name,
         approxAmount: Math.round((budget * 0.58) / 50) * 50,
         reason:
-          "When adding stock exposure, FinPilot favors broad sleeves (including core ETFs) before niche themes.",
+          "When adding stock exposure, Vérité favors broad sleeves (including core ETFs) before niche themes.",
       });
     }
     if (secondary && budget >= 750) {
@@ -2491,8 +2491,8 @@ export function RiskProfilerQuiz({ onComplete }) {
       <div className="onboard-card-wrap">
         <div className="onboard-card">
           <header className="onboard-brand">
-            <div className="onboard-brand-mark">FinPilot</div>
-            <p className="onboard-brand-tag">Your beginner-friendly financial co-pilot</p>
+            <div className="onboard-brand-mark">Vérité</div>
+            <p className="onboard-brand-tag">Know what to do next.</p>
           </header>
 
           <div className="onboard-progress">
@@ -2596,7 +2596,7 @@ export function GoalTargetStep({ quizSelections, onComplete, onBack }) {
   );
 
   useEffect(() => {
-    const draft = buildNestEggUserGoal(quizSelections);
+    const draft = buildVeriteUserGoal(quizSelections);
     if (draft) {
       setGoalRefineAmount(String(draft.targetAmount));
       setGoalRefineYear(String(draft.targetYear));
@@ -2629,7 +2629,7 @@ export function GoalTargetStep({ quizSelections, onComplete, onBack }) {
       return;
     }
     const indices = [...quizSelections];
-    const draft = buildNestEggUserGoal(indices);
+    const draft = buildVeriteUserGoal(indices);
     if (!draft) return;
     const refined =
       mergeGoalWithTargets(draft, amt, yr) ?? normalizeStoredUserGoal(draft);
@@ -2644,8 +2644,8 @@ export function GoalTargetStep({ quizSelections, onComplete, onBack }) {
       <div className="onboard-card-wrap">
         <div className="onboard-card">
           <header className="onboard-brand">
-            <div className="onboard-brand-mark">FinPilot</div>
-            <p className="onboard-brand-tag">Your beginner-friendly financial co-pilot</p>
+            <div className="onboard-brand-mark">Vérité</div>
+            <p className="onboard-brand-tag">Know what to do next.</p>
           </header>
 
           <div className="onboard-progress">
@@ -3040,9 +3040,8 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
               lineHeight: 1.55,
             }}
           >
-            FinPilot aggregates all your accounts in one place and tells you
-            exactly what to do — like having a Goldman Sachs advisor in your
-            pocket.
+            Vérité brings your accounts together in one place so you always
+            know what to do next.
           </p>
           <button
             type="button"
@@ -3218,7 +3217,7 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
               className="metric-sub"
               style={{ fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.4 }}
             >
-              FinPilot: {fmt(baseVal)} · Linked accounts: {fmt(linkedSum)}
+              Vérité: {fmt(baseVal)} · Linked accounts: {fmt(linkedSum)}
             </div>
           ) : null}
           <div
@@ -4569,7 +4568,7 @@ function Rebalance({ portfolio, riskProfile }) {
                 Holdings ideas from this plan
               </div>
               <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.55, marginBottom: 14 }}>
-                FinPilot translates each allocation gap into illustrative trims or adds on your actual holdings.
+                Vérité translates each allocation gap into illustrative trims or adds on your actual holdings.
                 Tick anything you&apos;re seriously considering—you stay in control and confirm trades elsewhere.
               </p>
 
@@ -4720,7 +4719,7 @@ function Rebalance({ portfolio, riskProfile }) {
             <div style={{ fontSize: 14, color: "#0f172a", marginBottom: 6 }}>Estimated transaction fees: <strong>~$12</strong></div>
             <div style={{ fontSize: 14, color: "#0f172a", marginBottom: 6 }}>Tax impact: <strong>Minimal</strong> (mostly within tax-advantaged accounts)</div>
             <div style={{ fontSize: 14, color: "#0f172a", marginBottom: 16 }}>
-              Execution: <strong>In your brokerage</strong> — FinPilot does not place trades.
+              Execution: <strong>In your brokerage</strong> — Vérité does not place trades.
             </div>
             {!applied ? (
               <button
@@ -4862,7 +4861,7 @@ function Rebalance({ portfolio, riskProfile }) {
 function Assistant({ portfolio, riskProfile }) {
   const { selectedGoal, linkedAccounts, manualHoldings } = useAppContext();
   const [messages, setMessages] = useState([
-    { role: "ai", text: `Hi, I'm your FinPilot assistant. I can answer questions about your portfolio in plain English. Try asking "Is my portfolio safe?" or "Should I sell now?"` },
+    { role: "ai", text: `Hi, I'm your Vérité assistant. I can answer questions about your portfolio in plain English. Try asking "Is my portfolio safe?" or "Should I sell now?"` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -4889,7 +4888,7 @@ function Assistant({ portfolio, riskProfile }) {
     const pa = deriveActualAllocation(linkedAccounts, manualHoldings);
     const wealthSnap = calculateAllocationBreakdown(linkedAccounts, manualHoldings).total;
     const totalForContext = wealthSnap > 0 ? wealthSnap : portfolio.totalValue;
-    const context = `FinPilot user portfolio snapshot:
+    const context = `Vérité user portfolio snapshot:
 - Total Net Worth: ${fmt(totalForContext)}
 - Mix from linked accounts & holdings: Stocks ${pa.stocks.toFixed(1)}%, Mutual funds ${pa.mutualFunds.toFixed(1)}%, Bonds ${pa.bonds.toFixed(1)}%, Cash (bank) ${pa.cash.toFixed(1)}%${pa.brokerageUnallocated > 0.5 ? `, Unspecified brokerage ${pa.brokerageUnallocated.toFixed(1)}%` : ""}
 - Risk profile: ${riskProfile}
@@ -4907,7 +4906,7 @@ function Assistant({ portfolio, riskProfile }) {
       const text = await askAssistant(userMsg, context, priorHistory);
       setMessages((m) => [...m, { role: "ai", text }]);
     } catch (err) {
-      console.error("[FinPilot assistant]", err);
+      console.error("[Vérité assistant]", err);
       const msg = err instanceof Error ? err.message : String(err);
       const hint =
         msg.includes("GEMINI_API_KEY") || msg.includes("gemini_not_configured")
@@ -4930,10 +4929,10 @@ function Assistant({ portfolio, riskProfile }) {
   return (
     <div className="assistant-page">
       <header className="assistant-page-header">
-        <span className="assistant-page-eyebrow">Portfolio copilot</span>
+        <span className="assistant-page-eyebrow">Vérité</span>
         <h2 className="assistant-page-title">AI Assistant</h2>
         <p className="assistant-page-subtitle">
-          Ask anything about your money — no jargon, just plain answers
+          Know what to do next — ask in plain language, get clear answers
         </p>
       </header>
 
@@ -5035,8 +5034,8 @@ function PanicMode({ onClose }) {
   );
 }
 
-const FINPILOT_ALERTS_SUBSCRIBE_KEY = "finpilot_alerts_subscribed_email";
-const FINPILOT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VERITE_ALERTS_SUBSCRIBE_KEY = "verite_alerts_subscribed_email";
+const VERITE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ─── ALERTS ───────────────────────────────────────────────────────────────────
 function Alerts() {
@@ -5086,7 +5085,7 @@ function Alerts() {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(FINPILOT_ALERTS_SUBSCRIBE_KEY);
+      const stored = localStorage.getItem(VERITE_ALERTS_SUBSCRIBE_KEY);
       if (stored) {
         setEmail(stored);
         setSubscribed(true);
@@ -5102,18 +5101,18 @@ function Alerts() {
     e.preventDefault();
     setError("");
     const em = email.trim();
-    if (!FINPILOT_EMAIL_RE.test(em)) {
+    if (!VERITE_EMAIL_RE.test(em)) {
       setError("Please enter a valid email address.");
       return;
     }
     try {
-      localStorage.setItem(FINPILOT_ALERTS_SUBSCRIBE_KEY, em);
+      localStorage.setItem(VERITE_ALERTS_SUBSCRIBE_KEY, em);
     } catch {
       /* ignore */
     }
-    const subject = encodeURIComponent("You're subscribed to FinPilot updates");
+    const subject = encodeURIComponent("You're subscribed to Vérité updates");
     const body = encodeURIComponent(
-      "Thanks for subscribing to FinPilot market and portfolio updates.\n\nYou're on the list — we'll send important alerts and insights for your plan.\n\n— FinPilot",
+      "Thanks for subscribing to Vérité market and portfolio updates.\n\nYou're on the list — we'll send important alerts and insights for your plan.\n\n— Vérité",
     );
     const href = `mailto:${encodeURIComponent(em)}?subject=${subject}&body=${body}`;
     const a = document.createElement("a");
@@ -5127,7 +5126,7 @@ function Alerts() {
 
   const handleChangeEmail = () => {
     try {
-      localStorage.removeItem(FINPILOT_ALERTS_SUBSCRIBE_KEY);
+      localStorage.removeItem(VERITE_ALERTS_SUBSCRIBE_KEY);
     } catch {
       /* ignore */
     }
@@ -5144,7 +5143,7 @@ function Alerts() {
 
       <div className="section-title" style={{ marginTop: 4, marginBottom: 12 }}>Subscribe to latest updates</div>
       <div className="card" style={{ maxWidth: 560, marginBottom: 28 }}>
-        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Get FinPilot updates by email</div>
+        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Get Vérité updates by email</div>
         <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.6, marginBottom: 20 }}>
           Subscribe to the latest market and portfolio insights. After you confirm, your mail app opens with a short message — send it to yourself to see the subscription confirmation in your inbox.
         </p>
@@ -5206,7 +5205,7 @@ function Alerts() {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 
-function FinPilotTopBar() {
+function VeriteTopBar() {
   const navigate = useNavigate();
   const { currentUser, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -5293,7 +5292,7 @@ function FinPilotTopBar() {
   );
 }
 
-export default function FinPilot() {
+export default function VeriteApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
@@ -5367,8 +5366,8 @@ export default function FinPilot() {
       <div className="fp-app">
         <div className="fp-sidebar">
           <div className="fp-logo">
-            <h1>FinPilot</h1>
-            <span>Your financial co-pilot</span>
+            <h1>Vérité</h1>
+            <span>Know what to do next.</span>
           </div>
           <nav className="fp-nav">
             {nav.map((n) => {
@@ -5398,18 +5397,6 @@ export default function FinPilot() {
           </nav>
           <div className="fp-sidebar-footer">
             <div className="fp-profile-card">
-              {currentUser ? (
-                <>
-                  <div className="fp-profile-label">Signed in</div>
-                  <div className="fp-profile-name">
-                    {currentUser?.name?.trim() || DEFAULT_DISPLAY_NAME}
-                  </div>
-                  <div className="fp-profile-email">{currentUser.email}</div>
-                  {currentUser.avatar ? (
-                    <div className="fp-profile-avatar">{currentUser.avatar}</div>
-                  ) : null}
-                </>
-              ) : null}
               <div className="fp-profile-risk-row">
                 <div className="fp-profile-label">Risk profile</div>
                 <div className="fp-profile-risk">{riskProfile}</div>
@@ -5470,7 +5457,7 @@ export default function FinPilot() {
                 className="fp-sidebar-link"
                 onClick={() => {
                   try {
-                    localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
+                    localStorage.removeItem(VERITE_ONBOARDING_KEY);
                     localStorage.removeItem(INAPP_QUIZ_INDICES_KEY);
                     localStorage.removeItem(INAPP_READY_FOR_LINK_KEY);
                     localStorage.removeItem(PENDING_LINK_ACCOUNTS_KEY);
@@ -5486,7 +5473,7 @@ export default function FinPilot() {
           </div>
         </div>
         <main className="fp-main">
-          <FinPilotTopBar />
+          <VeriteTopBar />
           {isSettingsRoute ? <SettingsPage /> : renderPage()}
         </main>
         {showPanic && <PanicMode onClose={() => { setShowPanic(false); setPage("scenarios"); }} />}

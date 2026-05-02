@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthTrustBadges from "../components/AuthTrustBadges.jsx";
-import NestEggLogo from "../components/NestEggLogo.jsx";
+import VeriteLogo from "../components/VeriteLogo.jsx";
 import {
   DEMO_ACCOUNT_EMAIL,
   DEMO_ACCOUNT_PASSWORD,
@@ -115,7 +115,7 @@ export default function SignIn() {
         <div className="mx-auto w-full max-w-[400px]">
           <div className="flex justify-center">
             <div className="auth-logo-enter">
-              <NestEggLogo />
+              <VeriteLogo />
             </div>
           </div>
 

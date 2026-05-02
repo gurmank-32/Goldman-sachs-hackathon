@@ -1,4 +1,6 @@
-# FinPilot — pitch deck (outline)
+# Vérité — pitch deck (outline)
+
+**Tagline:** Know what to do next.
 
 Slides 1–9: use your existing narrative (problem, solution, demo, market, team, ask, etc.).
 

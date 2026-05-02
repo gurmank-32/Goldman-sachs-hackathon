@@ -4,13 +4,13 @@ import {
   INAPP_READY_FOR_LINK_KEY,
   PENDING_LINK_ACCOUNTS_KEY,
 } from "../constants/inappOnboarding.js";
-import { FINPILOT_ONBOARDING_KEY } from "../constants/signupQuiz.js";
+import { VERITE_ONBOARDING_KEY } from "../constants/signupQuiz.js";
 import { useAuth } from "../store/AppContext.jsx";
 import { RiskProfilerQuiz, globalStyle } from "../uploaded/finpilot.jsx";
 
 function quizEntryRedirect() {
   if (typeof localStorage === "undefined") return null;
-  if (localStorage.getItem(FINPILOT_ONBOARDING_KEY) === "true") {
+  if (localStorage.getItem(VERITE_ONBOARDING_KEY) === "true") {
     return "/dashboard";
   }
   if (localStorage.getItem(PENDING_LINK_ACCOUNTS_KEY) === "true") {

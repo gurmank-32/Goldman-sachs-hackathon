@@ -9,7 +9,7 @@ import OnboardingQuizPage from "./pages/OnboardingQuizPage.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import { AppProvider, useAuth } from "./store/AppContext.jsx";
-import FinPilot from "./uploaded/finpilot.jsx";
+import VeriteApp from "./uploaded/finpilot.jsx";
 
 /**
  * In-app onboarding order (protected):
@@ -57,13 +57,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <DashboardGate>
-                <FinPilot />
+                <VeriteApp />
               </DashboardGate>
             </ProtectedRoute>
           }
         />
 
         <Route path="/finpilot" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/verite" element={<Navigate to="/dashboard" replace />} />
         <Route path="/scenarios" element={<Navigate to="/dashboard" replace />} />
         <Route path="/impact" element={<Navigate to="/dashboard" replace />} />
         <Route path="/rebalance" element={<Navigate to="/dashboard" replace />} />
@@ -73,7 +74,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <DashboardGate>
-                <FinPilot />
+                <VeriteApp />
               </DashboardGate>
             </ProtectedRoute>
           }

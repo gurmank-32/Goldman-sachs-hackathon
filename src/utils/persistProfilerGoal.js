@@ -9,7 +9,7 @@ import {
 } from "../store/AppContext.jsx";
 
 /**
- * Persists quiz-derived profile + goal (same shape as legacy FinPilot onboarding).
+ * Persists quiz-derived profile + goal (same shape as in-app Vérité onboarding).
  */
 export function persistProfilerAndGoal({
   email,

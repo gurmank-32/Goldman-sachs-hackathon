@@ -3,12 +3,12 @@ import {
   INAPP_READY_FOR_LINK_KEY,
   PENDING_LINK_ACCOUNTS_KEY,
 } from "../constants/inappOnboarding.js";
-import { FINPILOT_ONBOARDING_KEY } from "../constants/signupQuiz.js";
+import { VERITE_ONBOARDING_KEY } from "../constants/signupQuiz.js";
 
 export default function LinkAccountsGate({ children }) {
   if (
     typeof localStorage !== "undefined" &&
-    localStorage.getItem(FINPILOT_ONBOARDING_KEY) === "true"
+    localStorage.getItem(VERITE_ONBOARDING_KEY) === "true"
   ) {
     return <Navigate to="/dashboard" replace />;
   }

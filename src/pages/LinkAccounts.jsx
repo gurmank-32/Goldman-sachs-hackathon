@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LinkAccountModal from "../components/LinkAccountModal.jsx";
 import { useAppContext, useAuth } from "../store/AppContext.jsx";
-import { completeFinPilotOnboardingUnlock } from "../utils/authRouting.js";
+import { completeVeriteOnboardingUnlock } from "../utils/authRouting.js";
 
 /**
  * Account linking UI. Linked accounts are saved by AppContext as JSON arrays under the
@@ -131,14 +131,14 @@ export default function LinkAccounts() {
   const [linkCancelMsg, setLinkCancelMsg] = useState("");
 
   const goDashboard = () => {
-    completeFinPilotOnboardingUnlock();
+    completeVeriteOnboardingUnlock();
     navigate("/dashboard", { replace: true });
   };
 
   const handleConnectAndContinue = () => {
     setFinishOverlay(true);
     window.setTimeout(() => {
-      completeFinPilotOnboardingUnlock();
+      completeVeriteOnboardingUnlock();
       navigate("/dashboard", { replace: true });
     }, 900);
   };
@@ -175,7 +175,18 @@ export default function LinkAccounts() {
             color: "#fff",
           }}
         >
-          FinPilot
+          Vérité
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: "rgba(249, 248, 246, 0.65)",
+            marginTop: 6,
+            lineHeight: 1.4,
+          }}
+        >
+          Know what to do next.
         </div>
         <div
           style={{

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthTrustBadges from "../components/AuthTrustBadges.jsx";
-import NestEggLogo from "../components/NestEggLogo.jsx";
+import VeriteLogo from "../components/VeriteLogo.jsx";
 import {
   SIGNUP_QUIZ_QUESTIONS,
-  buildNestEggUserGoal,
+  buildVeriteUserGoal,
 } from "../constants/signupQuiz.js";
 import LinkAccountModal from "../components/LinkAccountModal.jsx";
 import { useAppContext, useAuth } from "../store/AppContext.jsx";
 import { SIGNUP_AWAITING_LINK_CHOICE_KEY } from "../constants/inappOnboarding.js";
 import {
-  completeFinPilotOnboardingUnlock,
+  completeVeriteOnboardingUnlock,
   getPostAuthEntryPath,
 } from "../utils/authRouting.js";
 
@@ -174,7 +174,7 @@ export default function SignUp() {
   useEffect(() => {
     if (phase !== "goalTarget") return;
     if (!quizSelections.every((x) => x !== null)) return;
-    const g = buildNestEggUserGoal(quizSelections);
+    const g = buildVeriteUserGoal(quizSelections);
     if (g) {
       setGoalTargetAmount(String(g.targetAmount));
       setGoalTargetYear(String(g.targetYear));
@@ -300,7 +300,7 @@ export default function SignUp() {
     } catch {
       /* ignore */
     }
-    completeFinPilotOnboardingUnlock();
+    completeVeriteOnboardingUnlock();
     navigate("/dashboard", { replace: true });
   }
 
@@ -431,7 +431,7 @@ export default function SignUp() {
             <div
               className={`auth-logo-enter ${phase === "quiz" || phase === "goalTarget" ? "scale-90 sm:scale-95" : ""}`}
             >
-              <NestEggLogo />
+              <VeriteLogo />
             </div>
           </div>
 

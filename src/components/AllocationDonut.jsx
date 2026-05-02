@@ -13,7 +13,7 @@ function formatUsd(n) {
   }).format(n);
 }
 
-const EMPTY_SLICE_COUNT = 6;
+const EMPTY_SLICE_COUNT = 5;
 const EMPTY_COLOR = "#E8E4DC";
 
 function DonutTooltip({ active, payload, formatMoney }) {
@@ -79,14 +79,7 @@ export default function AllocationDonut({
         percentage: 100 / EMPTY_SLICE_COUNT,
       }));
     }
-    const order = [
-      "checking",
-      "savings",
-      "stocks",
-      "mutualFunds",
-      "bonds",
-      "cash",
-    ];
+    const order = ["checking", "savings", "stocks", "mutualFunds", "bonds"];
     return order
       .map((k) => {
         const s = breakdown[k];
