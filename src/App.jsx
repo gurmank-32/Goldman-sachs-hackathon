@@ -10,7 +10,6 @@ import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import { AppProvider, useAuth } from "./store/AppContext.jsx";
 import VeriteApp from "./uploaded/finpilot.jsx";
-
 /**
  * In-app onboarding order (protected):
  *   `/` (risk profiler quiz) → `/goal` (targets) → `/link-accounts` (optional linking) → `/dashboard`.

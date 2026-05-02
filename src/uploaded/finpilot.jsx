@@ -3329,61 +3329,6 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
                 >
                   {fmt(wealthDisplayTotal)}
                 </div>
-                {allocationBreakdown.total > 0 && breakdownRows.length > 0 ? (
-                  <div
-                    className="metric-sub"
-                    style={{
-                      fontSize: 13,
-                      color: "#64748b",
-                      marginTop: 12,
-                      lineHeight: 1.55,
-                      maxWidth: 520,
-                    }}
-                  >
-                    {breakdownRows.map((row) => (
-                      <div
-                        key={row.key}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          marginBottom: 6,
-                          padding: "6px 10px",
-                          borderRadius: 8,
-                          background: `${row.color}18`,
-                        }}
-                      >
-                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 2,
-                              background: row.color,
-                              flexShrink: 0,
-                            }}
-                            aria-hidden
-                          />
-                          {row.label}
-                        </span>
-                        <span style={{ fontWeight: 600, color: "#0A1628", whiteSpace: "nowrap" }}>
-                          {fmt(row.value)}
-                          <span style={{ fontWeight: 400, color: "#94a3b8" }}>
-                            {" "}
-                            ({Math.round(row.percentage)}%)
-                          </span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : linkedSum > 0 ? (
-                  <div
-                    className="metric-sub"
-                    style={{ fontSize: 13, color: "#64748b", marginTop: 10, lineHeight: 1.4 }}
-                  >
-                    Vérité: {fmt(baseVal)} · Linked accounts: {fmt(linkedSum)}
-                  </div>
-                ) : null}
                 <div
                   className="metric-sub"
                   style={{
