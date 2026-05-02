@@ -10,6 +10,17 @@ import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import { AppProvider, useAuth } from "./store/AppContext.jsx";
 import VeriteApp from "./uploaded/finpilot.jsx";
+const cors = require('cors');
+
+app.use(cors({
+  origin: 'https://goldman-sachs-hackathon-1.onrender.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Explicitly handle preflight for ALL routes
+app.options('*', cors());
 
 /**
  * In-app onboarding order (protected):
