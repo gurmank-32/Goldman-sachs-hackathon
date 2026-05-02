@@ -1157,6 +1157,75 @@ export const globalStyle = `
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
   .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .metric-card { background: #f8fafc; border-radius: 12px; padding: 18px; }
+  .dashboard-metric-shell { margin-bottom: 28px; position: relative; }
+  .dashboard-metric-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: -18px;
+    padding: 0 6px;
+    position: relative;
+    z-index: 2;
+  }
+  .dashboard-metric-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 16px 16px 8px 8px;
+    border: 2px solid transparent;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: #0f172a;
+    transition:
+      transform 0.22s cubic-bezier(0.34, 1.15, 0.48, 1),
+      box-shadow 0.22s ease,
+      filter 0.2s ease;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+  }
+  .dashboard-metric-tab:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.04);
+  }
+  .dashboard-metric-tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(184, 150, 46, 0.35), 0 8px 22px rgba(15, 23, 42, 0.12);
+  }
+  .dashboard-metric-tab--active {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow:
+      0 16px 36px rgba(15, 23, 42, 0.16),
+      0 6px 14px rgba(15, 23, 42, 0.08);
+    z-index: 3;
+  }
+  .dashboard-metric-panel {
+    position: relative;
+    z-index: 1;
+    border-radius: 22px;
+    padding: 26px 24px 22px;
+    background: linear-gradient(165deg, #ffffff 0%, #fafafa 48%, #f8fafc 100%);
+    box-shadow:
+      0 0 0 1px rgba(15, 23, 42, 0.07),
+      0 28px 56px -16px rgba(15, 23, 42, 0.22),
+      0 14px 28px -10px rgba(184, 150, 46, 0.14);
+    min-height: 220px;
+  }
+  .dashboard-metric-panel-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(184, 150, 46, 0.15), transparent 42%, transparent);
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+  @media (max-width: 720px) {
+    .dashboard-health-risk-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
   .metric-label { font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
   .metric-value { font-size: 26px; font-weight: 600; color: #0f172a; }
   .metric-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
@@ -2834,6 +2903,7 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
   const greetFirstName =
     firstNameFromDisplayName(currentUser?.name) || DEFAULT_DISPLAY_NAME;
   const [homePortfolioTab, setHomePortfolioTab] = useState("holdings");
+  const [dashboardMetricTab, setDashboardMetricTab] = useState("wealth-persona");
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [modalGoalIdx, setModalGoalIdx] = useState(0);
   const [modalTargetAmount, setModalTargetAmount] = useState("");
@@ -3176,90 +3246,352 @@ function Dashboard({ portfolio, riskProfile, onPanic }) {
         }}
       />
 
-      <div className="grid4" style={{ marginBottom: 24 }}>
-        <div className="metric-card">
-          <div className="metric-label">Total Net Worth</div>
-          <div className="metric-value">{fmt(wealthDisplayTotal)}</div>
-          {allocationBreakdown.total > 0 && breakdownRows.length > 0 ? (
+      <div className="dashboard-metric-shell">
+        <div className="dashboard-metric-tabs" role="tablist" aria-label="Snapshot details">
+          {[
+            {
+              id: "wealth-persona",
+              label: "Net worth & persona",
+              icon: "wallet-out",
+              stroke: "#0A1628",
+              bg: "linear-gradient(145deg, #F9F8F6 0%, #F5EDD6 45%, #EDE4D4 100%)",
+              border: "rgba(184, 150, 46, 0.55)",
+            },
+            {
+              id: "health-risk",
+              label: "Health & risk",
+              icon: "shield",
+              stroke: "#0A1628",
+              bg: "linear-gradient(145deg, #E8F5F0 0%, #F5EDD6 50%, #E0E7FF 100%)",
+              border: "rgba(10, 22, 40, 0.2)",
+            },
+          ].map((tab) => {
+            const active = dashboardMetricTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                id={`metric-tab-${tab.id}`}
+                aria-controls={`metric-panel-${tab.id}`}
+                className={`dashboard-metric-tab ${active ? "dashboard-metric-tab--active" : ""}`}
+                style={{
+                  background: tab.bg,
+                  borderColor: active ? tab.border : "rgba(232, 228, 220, 0.9)",
+                  color: "#0A1628",
+                }}
+                onClick={() => setDashboardMetricTab(tab.id)}
+              >
+                <MarcusStrokeIcon name={tab.icon} size={18} stroke={active ? "#B8962E" : tab.stroke} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="dashboard-metric-panel-wrap" style={{ position: "relative" }}>
+          <div className="dashboard-metric-panel-glow" aria-hidden />
+          <div
+            className="dashboard-metric-panel"
+            role="tabpanel"
+            id={`metric-panel-${dashboardMetricTab}`}
+            aria-labelledby={`metric-tab-${dashboardMetricTab}`}
+            style={{
+              borderTop: "none",
+              paddingTop: 22,
+            }}
+          >
             <div
-              className="metric-sub"
               style={{
-                fontSize: 12,
-                color: "#64748b",
-                marginTop: 8,
-                lineHeight: 1.55,
-                maxWidth: 420,
+                margin: "-26px -24px 0 -24px",
+                height: 4,
+                borderRadius: "22px 22px 0 0",
+                background:
+                  dashboardMetricTab === "wealth-persona"
+                    ? "linear-gradient(90deg, #2563EB 0%, #B8962E 50%, #7C3AED 100%)"
+                    : "linear-gradient(90deg, #1A7F5A 0%, #B8962E 100%)",
               }}
-            >
-              {breakdownRows.map((row) => (
+              aria-hidden
+            />
+
+            {dashboardMetricTab === "wealth-persona" ? (
+              <>
+                <div className="metric-label" style={{ color: "#475569", marginTop: 20 }}>
+                  Total net worth
+                </div>
                 <div
-                  key={row.key}
+                  className="metric-value"
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    marginBottom: 4,
+                    fontSize: 32,
+                    letterSpacing: "-0.02em",
+                    color: "#0A1628",
                   }}
                 >
-                  <span>{row.label}</span>
-                  <span style={{ fontWeight: 600, color: "#0A1628", whiteSpace: "nowrap" }}>
-                    {fmt(row.value)}
-                    <span style={{ fontWeight: 400, color: "#94a3b8" }}>
-                      {" "}
-                      ({Math.round(row.percentage)}%)
-                    </span>
+                  {fmt(wealthDisplayTotal)}
+                </div>
+                {allocationBreakdown.total > 0 && breakdownRows.length > 0 ? (
+                  <div
+                    className="metric-sub"
+                    style={{
+                      fontSize: 13,
+                      color: "#64748b",
+                      marginTop: 12,
+                      lineHeight: 1.55,
+                      maxWidth: 520,
+                    }}
+                  >
+                    {breakdownRows.map((row) => (
+                      <div
+                        key={row.key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 6,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          background: `${row.color}18`,
+                        }}
+                      >
+                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 2,
+                              background: row.color,
+                              flexShrink: 0,
+                            }}
+                            aria-hidden
+                          />
+                          {row.label}
+                        </span>
+                        <span style={{ fontWeight: 600, color: "#0A1628", whiteSpace: "nowrap" }}>
+                          {fmt(row.value)}
+                          <span style={{ fontWeight: 400, color: "#94a3b8" }}>
+                            {" "}
+                            ({Math.round(row.percentage)}%)
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : linkedSum > 0 ? (
+                  <div
+                    className="metric-sub"
+                    style={{ fontSize: 13, color: "#64748b", marginTop: 10, lineHeight: 1.4 }}
+                  >
+                    Vérité: {fmt(baseVal)} · Linked accounts: {fmt(linkedSum)}
+                  </div>
+                ) : null}
+                <div
+                  className="metric-sub"
+                  style={{
+                    color: "#1A7F5A",
+                    fontWeight: 600,
+                    marginTop: 12,
+                  }}
+                >
+                  ↑ +9.3% this year
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddFundsOpen(true)}
+                  style={{
+                    marginTop: 14,
+                    border: "2px solid #B8962E",
+                    color: "#B8962E",
+                    background: "linear-gradient(180deg, #FFFBF5 0%, #FFF8ED 100%)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    padding: "8px 16px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(184, 150, 46, 0.2)",
+                  }}
+                >
+                  + Add Holdings
+                </button>
+
+                <div
+                  style={{
+                    margin: "28px 0 20px",
+                    height: 1,
+                    background: "linear-gradient(90deg, transparent, #E8E4DC 15%, #B8962E 50%, #E8E4DC 85%, transparent)",
+                  }}
+                  aria-hidden
+                />
+
+                <div className="metric-label" style={{ color: "#475569" }}>
+                  Your persona
+                </div>
+                <div
+                  className="metric-value"
+                  style={{
+                    fontSize: 26,
+                    lineHeight: 1.25,
+                    color: "#0A1628",
+                  }}
+                >
+                  <span
+                    style={{
+                      background: "linear-gradient(90deg, #0A1628, #B8962E)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    {riskProfile === "Conservative"
+                      ? "Cautious Planner"
+                      : riskProfile === "Balanced"
+                        ? "Steady Builder"
+                        : "Bold Grower"}
                   </span>
                 </div>
-              ))}
-            </div>
-          ) : linkedSum > 0 ? (
-            <div
-              className="metric-sub"
-              style={{ fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.4 }}
-            >
-              Vérité: {fmt(baseVal)} · Linked accounts: {fmt(linkedSum)}
-            </div>
-          ) : null}
-          <div
-            className="metric-sub"
-            style={{
-              color: "#1A7F5A",
-              marginTop: allocationBreakdown.total > 0 || linkedSum > 0 ? 6 : undefined,
-            }}
-          >
-            ↑ +9.3% this year
+                <div
+                  className="metric-sub"
+                  style={{ fontSize: 15, color: "#475569", marginTop: 10, lineHeight: 1.55 }}
+                >
+                  Based on your quiz answers — we use this with your wealth picture to tune guidance and scenarios.
+                </div>
+              </>
+            ) : null}
+
+            {dashboardMetricTab === "health-risk" ? (
+              <div
+                className="dashboard-health-risk-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                  gap: 24,
+                  marginTop: 20,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "18px 16px",
+                    borderRadius: 16,
+                    background: "linear-gradient(165deg, rgba(26, 127, 90, 0.08) 0%, rgba(249, 248, 246, 0.95) 100%)",
+                    border: "1px solid rgba(26, 127, 90, 0.18)",
+                  }}
+                >
+                  <div className="metric-label" style={{ color: "#475569" }}>
+                    Health score
+                  </div>
+                  <div
+                    className="metric-value"
+                    style={{
+                      fontSize: 32,
+                      letterSpacing: "-0.02em",
+                      color: health > 70 ? "#1A7F5A" : health > 45 ? "#B8962E" : "#9B1C1C",
+                    }}
+                  >
+                    {health}
+                    <span style={{ fontSize: 20, color: "#94a3b8", fontWeight: 600 }}>/100</span>
+                  </div>
+                  <div
+                    className="metric-sub"
+                    style={{ fontSize: 14, color: "#475569", marginTop: 8, lineHeight: 1.5 }}
+                  >
+                    {health > 70
+                      ? "You're in great shape!"
+                      : health > 45
+                        ? "Small adjustments could sharpen your plan."
+                        : "A few focused moves may help you feel more in control."}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      height: 8,
+                      borderRadius: 999,
+                      background: "#E8E4DC",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${health}%`,
+                        height: "100%",
+                        borderRadius: 999,
+                        background: "linear-gradient(90deg, #34D399, #1A7F5A)",
+                        transition: "width 0.6s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "18px 16px",
+                    borderRadius: 16,
+                    background: "linear-gradient(165deg, rgba(184, 150, 46, 0.12) 0%, rgba(249, 248, 246, 0.95) 100%)",
+                    border: "1px solid rgba(184, 150, 46, 0.35)",
+                  }}
+                >
+                  <div className="metric-label" style={{ color: "#475569" }}>
+                    Risk level
+                  </div>
+                  <div
+                    className="metric-value"
+                    style={{
+                      fontSize: 28,
+                      letterSpacing: "-0.02em",
+                      color: risk === "High" ? "#9B1C1C" : risk === "Medium" ? "#B8962E" : "#1A7F5A",
+                    }}
+                  >
+                    {risk}
+                  </div>
+                  <div
+                    className="metric-sub"
+                    style={{ fontSize: 14, color: "#475569", marginTop: 8 }}
+                  >
+                    Your profile:{" "}
+                    <strong style={{ color: "#0A1628" }}>{riskProfile}</strong>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {["Low", "Medium", "High"].map((lvl) => (
+                      <span
+                        key={lvl}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background:
+                            (risk === "High" && lvl === "High") ||
+                            (risk === "Medium" && lvl === "Medium") ||
+                            (risk === "Low" && lvl === "Low")
+                              ? "linear-gradient(135deg, #F5EDD6, #E8E4DC)"
+                              : "#f1f5f9",
+                          color:
+                            (risk === "High" && lvl === "High") ||
+                            (risk === "Medium" && lvl === "Medium") ||
+                            (risk === "Low" && lvl === "Low")
+                              ? "#0A1628"
+                              : "#64748b",
+                          border:
+                            (risk === "High" && lvl === "High") ||
+                            (risk === "Medium" && lvl === "Medium") ||
+                            (risk === "Low" && lvl === "Low")
+                              ? "1px solid #B8962E"
+                              : "1px solid #e2e8f0",
+                        }}
+                      >
+                        {lvl}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => setAddFundsOpen(true)}
-            style={{
-              marginTop: 10,
-              border: "1px solid #B8962E",
-              color: "#B8962E",
-              background: "transparent",
-              fontSize: 12,
-              padding: "4px 12px",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            Add Holdings
-          </button>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Health score</div>
-          <div className="metric-value" style={{ color: health > 70 ? "#1A7F5A" : health > 45 ? "#B45309" : "#9B1C1C" }}>{health}/100</div>
-          <div className="metric-sub">{health > 70 ? "You're in great shape!" : health > 45 ? "Small adjustments needed" : "Action required"}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Risk level</div>
-          <div className="metric-value" style={{ color: risk === "High" ? "#9B1C1C" : risk === "Medium" ? "#B45309" : "#1A7F5A" }}>{risk}</div>
-          <div className="metric-sub">Your profile: {riskProfile}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Your persona</div>
-          <div className="metric-value" style={{ fontSize: 17, lineHeight: 1.4 }}>{riskProfile === "Conservative" ? "Cautious Planner" : riskProfile === "Balanced" ? "Steady Builder" : "Bold Grower"}</div>
-          <div className="metric-sub">Based on your answers</div>
         </div>
       </div>
 
