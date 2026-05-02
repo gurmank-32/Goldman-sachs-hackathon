@@ -107,7 +107,7 @@ export default function SignIn() {
     setPassword(DEMO_ACCOUNT_PASSWORD);
     try {
       await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch {
       setBanner("wrong_password");
     }
@@ -151,7 +151,7 @@ export default function SignIn() {
                 <Link
                   to="/signup"
                   className="font-normal underline"
-                  style={{ color: "#534AB7" }}
+                  style={{ color: "#B8962E" }}
                 >
                   Sign up
                 </Link>{" "}
@@ -164,7 +164,7 @@ export default function SignIn() {
               <Link
                 to="/signup"
                 className="font-normal underline"
-                style={{ color: "#534AB7" }}
+                style={{ color: "#B8962E" }}
               >
                 Sign up
               </Link>
@@ -231,7 +231,7 @@ export default function SignIn() {
                     type="button"
                     onClick={() => setForgotOpen((o) => !o)}
                     className="text-[12px] font-normal underline-offset-2 hover:underline"
-                    style={{ color: "#534AB7" }}
+                    style={{ color: "#B8962E" }}
                   >
                     Forgot password?
                   </button>

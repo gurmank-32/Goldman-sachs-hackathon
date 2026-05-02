@@ -103,7 +103,7 @@ export default function DemoModePill() {
     setOpen(false);
   }
 
-  async function goWithDemoAuth(targetPath) {
+  async function goHomeWithDemoAuth() {
     if (disabled) return;
     setBusy(true);
     try {
@@ -111,7 +111,7 @@ export default function DemoModePill() {
         ensureDemoAccount();
         await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
       }
-      navigate(targetPath);
+      navigate("/", { replace: true });
       setOpen(false);
     } catch {
       /* auth failed */
@@ -119,14 +119,6 @@ export default function DemoModePill() {
       setBusy(false);
     }
   }
-
-  const shortcuts = [
-    { label: "Home (FinPilot)", path: "/" },
-    { label: "FinPilot", path: "/finpilot" },
-    { label: "Scenarios", path: "/scenarios" },
-    { label: "Goal setter", path: "/goal" },
-    { label: "Decision log", path: "/decisions" },
-  ];
 
   return (
     <div ref={wrapRef} className="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2">
@@ -160,23 +152,17 @@ export default function DemoModePill() {
           </div>
           <div className="px-2 pt-2">
             <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Jump to
+              App
             </p>
-            <ul className="flex flex-col gap-0.5">
-              {shortcuts.map(({ label, path }) => (
-                <li key={path}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={disabled}
-                    className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                    onClick={() => void goWithDemoAuth(path)}
-                  >
-                    {label}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={disabled}
+              className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => void goHomeWithDemoAuth()}
+            >
+              Open FinPilot (home)
+            </button>
           </div>
         </div>
       ) : null}

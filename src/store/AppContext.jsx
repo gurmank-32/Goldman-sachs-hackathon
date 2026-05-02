@@ -9,10 +9,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { alexChenPortfolio } from "../data/portfolio.js";
 
-/**
- * selectedScenario shape: `{ type, name, color }` — optional scenarios module.
- */
-
 const AppContext = createContext(null);
 const AuthContext = createContext(null);
 
@@ -156,7 +152,6 @@ export function AppProvider({ children }) {
 
   const [userProfile, setUserProfile] = useState(initialApp.userProfile);
   const [selectedGoal, setSelectedGoal] = useState(initialApp.selectedGoal);
-  const [selectedScenario, setSelectedScenario] = useState(null);
   const [riskProfile, setRiskProfile] = useState(initialApp.riskProfile);
 
   const [currentUser, setCurrentUser] = useState(() => readSessionUser());
@@ -305,13 +300,11 @@ export function AppProvider({ children }) {
       setUserProfile,
       selectedGoal,
       setSelectedGoal,
-      selectedScenario,
-      setSelectedScenario,
       portfolio: alexChenPortfolio,
       riskProfile,
       setRiskProfile,
     }),
-    [userProfile, selectedGoal, selectedScenario, riskProfile],
+    [userProfile, selectedGoal, riskProfile],
   );
 
   const authValue = useMemo(

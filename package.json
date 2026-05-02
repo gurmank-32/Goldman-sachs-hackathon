@@ -6,7 +6,7 @@
   "scripts": {
     "dev:frontend": "vite",
     "dev:backend": "cd backend && python server.py",
-    "dev": "FLASK_PORT=5030 concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "FLASK_PORT=5040 concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "vite build",
     "preview": "vite preview"
   },

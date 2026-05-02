@@ -2,7 +2,7 @@
 export default function NestEggLogo() {
   return (
     <div className="flex items-center justify-center gap-3">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#16a34a]">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#B8962E]">
         <svg viewBox="0 0 48 48" aria-hidden className="h-9 w-9">
           <path
             d="M 9 30 Q 24 15 39 30"
@@ -26,7 +26,7 @@ export default function NestEggLogo() {
       </div>
       <span
         className="text-[24px] font-medium"
-        style={{ color: "#534AB7" }}
+        style={{ color: "#0A1628" }}
       >
         NestEgg
       </span>

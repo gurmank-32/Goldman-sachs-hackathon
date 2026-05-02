@@ -192,7 +192,7 @@ export default function SignUp() {
               <Link
                 to="/signin"
                 className="font-normal underline"
-                style={{ color: "#534AB7" }}
+                style={{ color: "#B8962E" }}
               >
                 Sign in
               </Link>

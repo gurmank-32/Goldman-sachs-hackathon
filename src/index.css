@@ -3,8 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --color-text-primary: #0f172a;
-  --color-border-tertiary: #e8e8ee;
+  --marcus-navy: #0a1628;
+  --marcus-navy-secondary: #112240;
+  --marcus-gold: #b8962e;
+  --marcus-gold-hover: #9a7a22;
+  --marcus-gold-light: #f5edd6;
+  --marcus-success: #1a7f5a;
+  --marcus-warning: #b45309;
+  --marcus-danger: #9b1c1c;
+  --marcus-bg: #f9f8f6;
+  --marcus-card: #ffffff;
+  --marcus-text: #0a1628;
+  --marcus-text-secondary: #4a5568;
+  --marcus-text-muted: #718096;
+  --marcus-border: #e8e4dc;
+
+  --color-text-primary: var(--marcus-text);
+  --color-text-secondary: var(--marcus-text-secondary);
+  --color-text-muted: var(--marcus-text-muted);
+  --color-border-tertiary: var(--marcus-border);
 }
 
 html {
@@ -13,18 +30,10 @@ html {
 
 body {
   font-family:
-    Inter,
-    system-ui,
+    "Inter",
     -apple-system,
     BlinkMacSystemFont,
-    "Segoe UI",
     sans-serif;
-}
-
-/* Donut hole mask — Marcus-style allocation ring */
-.marcus-donut-ring {
-  -webkit-mask: radial-gradient(circle, transparent 42%, black 43%);
-  mask: radial-gradient(circle, transparent 42%, black 43%);
 }
 
 @keyframes signup-dot-pulse {
@@ -60,14 +69,14 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 9999px;
-  border: 3px solid #e5e5e5;
-  border-top-color: #534ab7;
+  border: 3px solid var(--marcus-border);
+  border-top-color: var(--marcus-gold);
   animation: auth-route-spin 0.8s linear infinite;
 }
 
 .auth-route-spinner--marcus {
-  border-color: rgba(109, 182, 255, 0.25);
-  border-top-color: #6db6ff;
+  border-color: rgba(184, 150, 46, 0.25);
+  border-top-color: var(--marcus-gold);
 }
 
 @keyframes auth-route-spin {
@@ -116,19 +125,20 @@ body {
 
 .auth-input:focus {
   outline: none;
-  border-color: #534ab7;
-  box-shadow: 0 0 0 3px #eeedfe;
+  border-color: var(--marcus-gold);
+  box-shadow: 0 0 0 3px var(--marcus-gold-light);
 }
 
 .auth-submit-btn {
-  background-color: #534ab7;
+  background-color: var(--marcus-gold);
+  color: #fff;
   transition:
     background-color 150ms ease,
     transform 100ms ease;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
-  background-color: #3c3489;
+  background-color: var(--marcus-gold-hover);
 }
 
 .auth-submit-btn:active:not(:disabled) {
