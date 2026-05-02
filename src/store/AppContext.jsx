@@ -7,6 +7,11 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  FINPILOT_ONBOARDING_KEY,
+  SIGNUP_QUIZ_QUESTIONS,
+  buildSignupProfilePayload,
+} from "../constants/signupQuiz.js";
 import { alexChenPortfolio } from "../data/portfolio.js";
 
 const AppContext = createContext(null);
@@ -176,7 +181,21 @@ export function AppProvider({ children }) {
     if (p.riskProfile !== undefined) setRiskProfile(p.riskProfile);
   }, [currentUser]);
 
-  const signUp = useCallback(async (name, email, password) => {
+  const signUp = useCallback(async (name, email, password, quizOptionIndices) => {
+    if (
+      !Array.isArray(quizOptionIndices) ||
+      quizOptionIndices.length !== SIGNUP_QUIZ_QUESTIONS.length
+    ) {
+      throw new Error("Please answer every question to finish signing up.");
+    }
+    for (let qi = 0; qi < SIGNUP_QUIZ_QUESTIONS.length; qi++) {
+      const idx = quizOptionIndices[qi];
+      const nOpts = SIGNUP_QUIZ_QUESTIONS[qi].options.length;
+      if (!Number.isInteger(idx) || idx < 0 || idx >= nOpts) {
+        throw new Error("Please answer every question to finish signing up.");
+      }
+    }
+
     setIsLoading(true);
     await delay(1200);
     const trimmedName = String(name).trim();
@@ -202,6 +221,40 @@ export function AppProvider({ children }) {
       avatar: record.avatar,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+
+    const quizSnapshot = quizOptionIndices.map((idx, qi) => ({
+      questionId: SIGNUP_QUIZ_QUESTIONS[qi].id,
+      optionLabel: SIGNUP_QUIZ_QUESTIONS[qi].options[idx].label,
+    }));
+    const profileBundle = buildSignupProfilePayload(
+      quizOptionIndices,
+      quizSnapshot,
+    );
+    try {
+      localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+      localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
+      localStorage.setItem(
+        profileStorageKey(trimmedEmail),
+        JSON.stringify(profileBundle),
+      );
+    } catch {
+      /* ignore quota errors */
+    }
+
+    setSelectedGoal(profileBundle.goal ?? null);
+    setUserProfile((prev) => ({
+      ...prev,
+      name: trimmedName || DEFAULT_DISPLAY_NAME,
+      riskLabel: profileBundle.riskLabel ?? prev.riskLabel,
+      riskScore:
+        profileBundle.riskScore !== undefined
+          ? profileBundle.riskScore
+          : prev.riskScore,
+    }));
+    if (profileBundle.riskProfile != null) {
+      setRiskProfile(profileBundle.riskProfile);
+    }
+
     setCurrentUser(sessionUser);
     setIsAuthenticated(true);
     setIsLoading(false);
@@ -264,6 +317,7 @@ export function AppProvider({ children }) {
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
     }
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+    localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
     const demoGoal = {
       type: "retirement",
       targetAmount: alexChenPortfolio.goal.targetAmount,

@@ -6,6 +6,11 @@ import {
 } from "../store/AppContext.jsx";
 import { askAssistant } from "../services/marketApi.js";
 import { MarcusStrokeIcon } from "../components/MarcusStrokeIcon.jsx";
+import {
+  FINPILOT_ONBOARDING_KEY,
+  SIGNUP_QUIZ_QUESTIONS as ONBOARDING_QUESTIONS,
+  finPilotRiskFromQuizScore as getRiskProfile,
+} from "../constants/signupQuiz.js";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const RISK_LEVELS = { LOW: "Low", MEDIUM: "Medium", HIGH: "High" };
@@ -61,72 +66,6 @@ const SCENARIOS = [
   },
 ];
 
-const ONBOARDING_QUESTIONS = [
-  {
-    id: "goal",
-    stepLabel: "Goal",
-    question: "What are you hoping your money will do for you?",
-    hint: "Pick the one that feels most like you right now.",
-    options: [
-      { value: 2, icon: "home", label: "Buy a home or big purchase", description: "Within the next few years" },
-      { value: 2, icon: "book-open", label: "Save for education", description: "Mine or my child's future" },
-      { value: 4, icon: "sun", label: "Retire comfortably", description: "Long-term financial freedom" },
-      { value: 5, icon: "trending-up", label: "Grow my wealth", description: "Build it up over time" },
-      { value: 1, icon: "shield", label: "Protect what I have", description: "Safety over growth" },
-    ],
-  },
-  {
-    id: "timeline",
-    stepLabel: "Timeline",
-    question: "How long can you leave your money invested?",
-    hint: "Be honest — this shapes everything.",
-    options: [
-      { value: 1, icon: "zap", label: "Less than 2 years", description: "I may need it soon" },
-      { value: 2, icon: "calendar", label: "2–5 years", description: "Medium horizon" },
-      { value: 3, icon: "calendar-range", label: "5–10 years", description: "I'm patient" },
-      { value: 4, icon: "infinity", label: "10+ years", description: "I'm in no rush at all" },
-    ],
-  },
-  {
-    id: "risk_gut",
-    stepLabel: "Risk Gut-Check",
-    question:
-      "Imagine your $10,000 drops to $7,500 overnight. What do you do?",
-    hint: "Be honest — there's no wrong answer.",
-    options: [
-      { value: 1, icon: "alert-triangle", label: "Sell everything", description: "I can't stomach this loss" },
-      { value: 2, icon: "minus-circle", label: "Sell some of it", description: "Reduce my risk a bit" },
-      { value: 3, icon: "circle", label: "Do nothing", description: "Wait and see what happens" },
-      { value: 4, icon: "plus-circle", label: "Buy a little more", description: "Looks like a discount to me" },
-      { value: 5, icon: "trending-up", label: "Buy a lot more", description: "I fully trust the long game" },
-    ],
-  },
-  {
-    id: "amount",
-    stepLabel: "Investment Amount",
-    question: "What are you working with?",
-    hint: "Rough estimates are totally fine.",
-    options: [
-      { value: 1, icon: "sprout", label: "Under $1,000", description: "Just getting started" },
-      { value: 2, icon: "banknote", label: "$1,000 – $10,000", description: "Building momentum" },
-      { value: 3, icon: "coins", label: "$10,000 – $50,000", description: "Solid foundation" },
-      { value: 4, icon: "landmark", label: "$50,000+", description: "Serious about this" },
-    ],
-  },
-  {
-    id: "involvement",
-    stepLabel: "Involvement",
-    question: "How hands-on do you want to be?",
-    hint: "There's no wrong answer — it's your money.",
-    options: [
-      { value: 2, icon: "cpu", label: "Fully automatic", description: "Just handle it for me" },
-      { value: 3, icon: "mail", label: "Notify me when needed", description: "I'll approve the changes" },
-      { value: 3, icon: "search", label: "Explain before acting", description: "I want to understand first" },
-      { value: 4, icon: "sliders", label: "Full control", description: "Show me everything" },
-    ],
-  },
-];
-
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 function calcRisk(stocksPct) {
   if (stocksPct > 65) return RISK_LEVELS.HIGH;
@@ -144,13 +83,6 @@ function calcHealthScore(allocation, riskProfile) {
       : 20;
   const cashBuffer = allocation.cash >= 5 && allocation.cash <= 20 ? 30 : 10;
   return Math.min(100, diversification + riskMatch + cashBuffer);
-}
-
-/** Score sum ~5–22 from five questions (weighted values per answer). */
-function getRiskProfile(score) {
-  if (score <= 10) return "Conservative";
-  if (score <= 16) return "Balanced";
-  return "Aggressive";
 }
 
 function getRebalanceRecommendation(profile) {
@@ -2866,18 +2798,26 @@ function Alerts() {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-const FINPILOT_ONBOARDING_KEY = "finpilot_onboarding_done";
 
 export default function FinPilot() {
   const { currentUser, signOut } = useAuth();
-  const { setRiskProfile: setRiskProfileCtx } = useAppContext();
+  const {
+    riskProfile: persistedRiskProfile,
+    setRiskProfile: setRiskProfileCtx,
+  } = useAppContext();
   const [page, setPage] = useState(() =>
     typeof localStorage !== "undefined" &&
     localStorage.getItem(FINPILOT_ONBOARDING_KEY) === "true"
       ? "dashboard"
       : "onboarding",
   );
-  const [riskProfile, setRiskProfile] = useState("Balanced");
+  const [riskProfile, setRiskProfile] = useState(
+    () => persistedRiskProfile ?? "Balanced",
+  );
+
+  useEffect(() => {
+    if (persistedRiskProfile) setRiskProfile(persistedRiskProfile);
+  }, [persistedRiskProfile]);
   const [portfolio, setPortfolio] = useState(DEFAULT_PORTFOLIO);
   const [showPanic, setShowPanic] = useState(false);
 
