@@ -47,9 +47,10 @@ load_dotenv(os.path.join(_BACKEND_DIR, ".env"), override=True)
 app = Flask(__name__)
 # Allow any dev port (Vite uses 5173 by default but picks 5174/5175 if busy).
 CORS(app, resources={r"/api/*": {
-  "origins": "https://goldman-sachs-hackathon-1.onrender.com",
+  "origins": ["https://goldman-sachs-hackathon-1.onrender.com"],
   "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  "allow_headers": ["Content-Type", "Authorization"]
+  "allow_headers": ["Content-Type", "Authorization"],
+  "supports_credentials": True
 }})
 
 # Strip quotes/whitespace — common copy-paste mistakes from AI Studio
