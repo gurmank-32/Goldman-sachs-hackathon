@@ -8,9 +8,22 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ONBOARDING_COMPLETE_KEY,
+  PENDING_LINK_ACCOUNTS_KEY,
+  SIGNUP_AWAITING_LINK_CHOICE_KEY,
+  readLinkedAccountsFromStorageForEmail,
+  readManualHoldingsFromStorageForEmail,
+  writeLinkedAccountsToStorageForEmail,
+  writeManualHoldingsToStorageForEmail,
+} from "../constants/inappOnboarding.js";
+
+export { ONBOARDING_COMPLETE_KEY };
+import {
   FINPILOT_ONBOARDING_KEY,
   SIGNUP_QUIZ_QUESTIONS,
   buildSignupProfilePayload,
+  mergeGoalWithTargets,
+  normalizeStoredUserGoal,
 } from "../constants/signupQuiz.js";
 import { alexChenPortfolio } from "../data/portfolio.js";
 
@@ -19,7 +32,8 @@ const AuthContext = createContext(null);
 
 const SESSION_KEY = "nestegg_session";
 const USERS_KEY = "nestegg_users";
-export const ONBOARDING_COMPLETE_KEY = "nestegg_onboarding_complete";
+/** Primary goal snapshot (synced with profile bundle `goal`). */
+export const USER_GOAL_STORAGE_KEY = "nestegg_user_goal";
 
 /** Shown anywhere a user’s name is missing (session/UI fallbacks). */
 export const DEFAULT_DISPLAY_NAME = "Investor";
@@ -50,6 +64,25 @@ function readPersistedProfileBundle(email) {
   }
 }
 
+function readUserGoalFromStorage() {
+  try {
+    const raw = localStorage.getItem(USER_GOAL_STORAGE_KEY);
+    if (!raw) return null;
+    return normalizeStoredUserGoal(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function persistUserGoalToStorage(goal) {
+  if (!goal) return;
+  try {
+    localStorage.setItem(USER_GOAL_STORAGE_KEY, JSON.stringify(goal));
+  } catch {
+    /* ignore quota */
+  }
+}
+
 function computeInitialAppState() {
   const sessionUser = readSessionUser();
   const onboardingComplete =
@@ -66,7 +99,9 @@ function computeInitialAppState() {
   if (sessionUser?.email && onboardingComplete) {
     const p = readPersistedProfileBundle(sessionUser.email);
     if (p) {
-      if (p.goal != null) selectedGoal = p.goal;
+      const profileGoal =
+        p.goal != null ? normalizeStoredUserGoal(p.goal) : null;
+      if (profileGoal) selectedGoal = profileGoal;
       if (p.riskLabel !== undefined) userProfile.riskLabel = p.riskLabel;
       if (p.riskScore !== undefined) userProfile.riskScore = p.riskScore;
       userProfile.name =
@@ -76,6 +111,14 @@ function computeInitialAppState() {
   } else if (sessionUser) {
     userProfile.name =
       sessionUser.name?.trim() || DEFAULT_DISPLAY_NAME;
+  }
+
+  if (!selectedGoal) {
+    selectedGoal = readUserGoalFromStorage();
+  }
+
+  if (selectedGoal && sessionUser?.email && onboardingComplete) {
+    persistUserGoalToStorage(selectedGoal);
   }
 
   return {
@@ -158,6 +201,10 @@ export function AppProvider({ children }) {
   const [userProfile, setUserProfile] = useState(initialApp.userProfile);
   const [selectedGoal, setSelectedGoal] = useState(initialApp.selectedGoal);
   const [riskProfile, setRiskProfile] = useState(initialApp.riskProfile);
+  const [linkedAccounts, setLinkedAccounts] = useState(() =>
+    readLinkedAccountsFromStorageForEmail(readSessionUser()?.email ?? ""),
+  );
+  const [manualHoldings, setManualHoldings] = useState([]);
 
   const [currentUser, setCurrentUser] = useState(() => readSessionUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!readSessionUser());
@@ -168,11 +215,16 @@ export function AppProvider({ children }) {
     if (!email) return;
     if (localStorage.getItem(ONBOARDING_COMPLETE_KEY) !== "true") return;
     const p = readPersistedProfileBundle(email);
+    const profileGoal =
+      p?.goal != null ? normalizeStoredUserGoal(p.goal) : null;
+    const keyedGoal = readUserGoalFromStorage();
+    const nextGoal = profileGoal ?? keyedGoal ?? null;
+    setSelectedGoal(nextGoal);
+    if (nextGoal) persistUserGoalToStorage(nextGoal);
     if (!p) return;
-    setSelectedGoal(p.goal ?? null);
     setUserProfile((prev) => ({
       ...prev,
-      name: currentUser.name || DEFAULT_DISPLAY_NAME,
+      name: currentUser.name?.trim() || DEFAULT_DISPLAY_NAME,
       riskLabel:
         p.riskLabel !== undefined ? p.riskLabel : prev.riskLabel,
       riskScore:
@@ -181,7 +233,73 @@ export function AppProvider({ children }) {
     if (p.riskProfile !== undefined) setRiskProfile(p.riskProfile);
   }, [currentUser]);
 
-  const signUp = useCallback(async (name, email, password, quizOptionIndices) => {
+  useEffect(() => {
+    if (!currentUser?.email) {
+      setLinkedAccounts([]);
+      return;
+    }
+    setLinkedAccounts(readLinkedAccountsFromStorageForEmail(currentUser?.email));
+  }, [currentUser?.email]);
+
+  useEffect(() => {
+    if (!currentUser?.email) {
+      setManualHoldings([]);
+      return;
+    }
+    setManualHoldings(readManualHoldingsFromStorageForEmail(currentUser.email));
+  }, [currentUser?.email]);
+
+  const addLinkedAccount = useCallback((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    const email = currentUser?.email;
+    if (!email) return;
+    setLinkedAccounts((prev) => {
+      const next = [...prev, entry];
+      writeLinkedAccountsToStorageForEmail(email, next);
+      return next;
+    });
+  }, [currentUser?.email]);
+
+  const addManualHolding = useCallback((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    const email = currentUser?.email;
+    if (!email) return;
+    setManualHoldings((prev) => {
+      const next = [...prev, entry];
+      writeManualHoldingsToStorageForEmail(email, next);
+      return next;
+    });
+  }, [currentUser?.email]);
+
+  const removeLinkedAccount = useCallback((id) => {
+    if (!id) return;
+    const email = currentUser?.email;
+    if (!email) return;
+    setLinkedAccounts((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      writeLinkedAccountsToStorageForEmail(email, next);
+      return next;
+    });
+  }, [currentUser?.email]);
+
+  const updateLinkedAccount = useCallback((id, patch) => {
+    if (!id || !patch || typeof patch !== "object") return;
+    const email = currentUser?.email;
+    if (!email) return;
+    setLinkedAccounts((prev) => {
+      const next = prev.map((a) => (a.id === id ? { ...a, ...patch } : a));
+      writeLinkedAccountsToStorageForEmail(email, next);
+      return next;
+    });
+  }, [currentUser?.email]);
+
+  const signUp = useCallback(async (
+    name,
+    email,
+    password,
+    quizOptionIndices,
+    goalTarget = null,
+  ) => {
     if (
       !Array.isArray(quizOptionIndices) ||
       quizOptionIndices.length !== SIGNUP_QUIZ_QUESTIONS.length
@@ -226,22 +344,44 @@ export function AppProvider({ children }) {
       questionId: SIGNUP_QUIZ_QUESTIONS[qi].id,
       optionLabel: SIGNUP_QUIZ_QUESTIONS[qi].options[idx].label,
     }));
-    const profileBundle = buildSignupProfilePayload(
+    let profileBundle = buildSignupProfilePayload(
       quizOptionIndices,
       quizSnapshot,
     );
+    if (
+      goalTarget &&
+      profileBundle.goal &&
+      Number.isFinite(Number(goalTarget.targetAmount)) &&
+      Number.isFinite(Number(goalTarget.targetYear))
+    ) {
+      const merged = mergeGoalWithTargets(
+        profileBundle.goal,
+        goalTarget.targetAmount,
+        goalTarget.targetYear,
+      );
+      if (merged) profileBundle = { ...profileBundle, goal: merged };
+    }
     try {
+      localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
       localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
-      localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
+      localStorage.setItem(PENDING_LINK_ACCOUNTS_KEY, "true");
       localStorage.setItem(
         profileStorageKey(trimmedEmail),
         JSON.stringify(profileBundle),
       );
+      if (profileBundle.goal != null) {
+        const g = normalizeStoredUserGoal(profileBundle.goal);
+        if (g) persistUserGoalToStorage(g);
+      }
     } catch {
       /* ignore quota errors */
     }
 
-    setSelectedGoal(profileBundle.goal ?? null);
+    const normalizedGoal =
+      profileBundle.goal != null
+        ? normalizeStoredUserGoal(profileBundle.goal)
+        : null;
+    setSelectedGoal(normalizedGoal);
     setUserProfile((prev) => ({
       ...prev,
       name: trimmedName || DEFAULT_DISPLAY_NAME,
@@ -297,6 +437,17 @@ export function AppProvider({ children }) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
     setCurrentUser(sessionUser);
     setIsAuthenticated(true);
+    const p = readPersistedProfileBundle(trimmedEmail);
+    if (p?.goal != null) {
+      const g = normalizeStoredUserGoal(p.goal);
+      if (g) {
+        persistUserGoalToStorage(g);
+        setSelectedGoal(g);
+      }
+    } else {
+      const keyed = readUserGoalFromStorage();
+      if (keyed) setSelectedGoal(keyed);
+    }
     setIsLoading(false);
   }, []);
 
@@ -319,9 +470,11 @@ export function AppProvider({ children }) {
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
     localStorage.setItem(FINPILOT_ONBOARDING_KEY, "true");
     const demoGoal = {
-      type: "retirement",
+      type: "retire",
+      label: "Retire comfortably",
       targetAmount: alexChenPortfolio.goal.targetAmount,
       targetYear: 2050,
+      emoji: null,
     };
     const demoRiskLabel = initialRiskLabelFromPortfolio(alexChenPortfolio);
     setUserProfile((prev) => ({
@@ -330,6 +483,7 @@ export function AppProvider({ children }) {
       riskLabel: demoRiskLabel,
     }));
     setSelectedGoal(demoGoal);
+    persistUserGoalToStorage(demoGoal);
     localStorage.setItem(
       profileStorageKey(email),
       JSON.stringify({
@@ -343,8 +497,22 @@ export function AppProvider({ children }) {
 
   const signOut = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
+    try {
+      sessionStorage.removeItem(SIGNUP_AWAITING_LINK_CHOICE_KEY);
+    } catch {
+      /* ignore */
+    }
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setSelectedGoal(null);
+    setRiskProfile(null);
+    setLinkedAccounts([]);
+    setManualHoldings([]);
+    setUserProfile({
+      name: DEFAULT_DISPLAY_NAME,
+      riskScore: null,
+      riskLabel: initialRiskLabelFromPortfolio(alexChenPortfolio),
+    });
     navigate("/signin", { replace: true });
   }, [navigate]);
 
@@ -357,8 +525,24 @@ export function AppProvider({ children }) {
       portfolio: alexChenPortfolio,
       riskProfile,
       setRiskProfile,
+      linkedAccounts,
+      manualHoldings,
+      addLinkedAccount,
+      addManualHolding,
+      removeLinkedAccount,
+      updateLinkedAccount,
     }),
-    [userProfile, selectedGoal, riskProfile],
+    [
+      userProfile,
+      selectedGoal,
+      riskProfile,
+      linkedAccounts,
+      manualHoldings,
+      addLinkedAccount,
+      addManualHolding,
+      removeLinkedAccount,
+      updateLinkedAccount,
+    ],
   );
 
   const authValue = useMemo(

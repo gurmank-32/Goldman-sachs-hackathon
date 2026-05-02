@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { FINPILOT_ONBOARDING_KEY } from "../constants/signupQuiz.js";
 import {
   DEMO_ACCOUNT_EMAIL,
   DEMO_ACCOUNT_PASSWORD,
   useAuth,
 } from "../store/AppContext.jsx";
-
-function readFinPilotQuizDone() {
-  try {
-    return localStorage.getItem("finpilot_onboarding_done") === "true";
-  } catch {
-    return false;
-  }
-}
 
 function clearAllNesteggLocalStorageKeys() {
   const keys = [];
@@ -21,6 +14,11 @@ function clearAllNesteggLocalStorageKeys() {
     if (k?.startsWith("nestegg_")) keys.push(k);
   }
   keys.forEach((k) => localStorage.removeItem(k));
+  try {
+    localStorage.removeItem(FINPILOT_ONBOARDING_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function DemoModePill() {
@@ -36,32 +34,17 @@ export default function DemoModePill() {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [quizDone, setQuizDone] = useState(readFinPilotQuizDone);
   const wrapRef = useRef(null);
 
   const path = location.pathname.replace(/\/+$/, "") || "/";
 
-  useEffect(() => {
-    function onFinPilotQuizDone() {
-      setQuizDone(true);
-    }
-    window.addEventListener("finpilot-onboarding-complete", onFinPilotQuizDone);
-    return () =>
-      window.removeEventListener(
-        "finpilot-onboarding-complete",
-        onFinPilotQuizDone,
-      );
-  }, []);
-
-  useEffect(() => {
-    setQuizDone(readFinPilotQuizDone());
-  }, [location.pathname]);
-
-  /** Hide on auth screens; on `/` hide until FinPilot questions are finished. */
+  /** Hide on auth and onboarding routes. */
   const hide =
     path === "/signin" ||
     path === "/signup" ||
-    (path === "/" && !quizDone);
+    path === "/" ||
+    path === "/goal" ||
+    path === "/link-accounts";
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +70,7 @@ export default function DemoModePill() {
     try {
       ensureDemoAccount();
       await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
       setOpen(false);
     } catch {
       /* keep panel open on failure */
@@ -111,7 +94,7 @@ export default function DemoModePill() {
         ensureDemoAccount();
         await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
       }
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
       setOpen(false);
     } catch {
       /* auth failed */

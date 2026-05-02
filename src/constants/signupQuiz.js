@@ -222,49 +222,131 @@ export function finPilotRiskFromQuizScore(score) {
   return "Aggressive";
 }
 
-function goalRecord(goalOptionIndex) {
-  const y = new Date().getFullYear();
-  const rows = [
-    {
-      type: "home_purchase",
-      title: "Buy a home or big purchase",
-      targetAmount: 350_000,
-      targetYear: y + 5,
-    },
-    {
-      type: "education",
-      title: "Save for education",
-      targetAmount: 80_000,
-      targetYear: y + 10,
-    },
-    {
-      type: "retirement",
-      title: "Retire comfortably",
-      targetAmount: 500_000,
-      targetYear: y + 25,
-    },
-    {
-      type: "wealth_growth",
-      title: "Grow my wealth",
-      targetAmount: 250_000,
-      targetYear: y + 15,
-    },
-    {
-      type: "capital_preservation",
-      title: "Protect what I have",
-      targetAmount: 120_000,
-      targetYear: y + 10,
-    },
-  ];
-  return rows[goalOptionIndex] ?? rows[2];
+/** Canonical goal `type` values for `nestegg_user_goal` + AppContext. */
+const GOAL_TYPES_BY_INDEX = ["home", "education", "retire", "grow", "protect"];
+
+const GOAL_BASE_AMOUNTS = {
+  home: 350_000,
+  education: 80_000,
+  retire: 500_000,
+  grow: 250_000,
+  protect: 120_000,
+};
+
+const TIMELINE_YEARS_FROM_NOW = [2, 4, 8, 20];
+const AMOUNT_TIER_MULTIPLIER = [0.35, 0.7, 1.0, 1.45];
+
+function labelForGoalType(type) {
+  const map = {
+    home: "Buy a home or big purchase",
+    education: "Save for education",
+    retire: "Retire comfortably",
+    grow: "Grow my wealth",
+    protect: "Protect what I have",
+  };
+  return map[type] ?? "Retire comfortably";
+}
+
+/**
+ * Normalize goal objects from localStorage / legacy profile bundles.
+ * @param {unknown} raw
+ * @returns {{ type: string, label: string, targetAmount: number, targetYear: number, emoji: null } | null}
+ */
+export function normalizeStoredUserGoal(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const legacyTypeMap = {
+    home_purchase: "home",
+    retirement: "retire",
+    wealth_growth: "grow",
+    capital_preservation: "protect",
+  };
+  let type = legacyTypeMap[raw.type] ?? raw.type;
+  const allowed = new Set(["home", "education", "retire", "grow", "protect"]);
+  if (!allowed.has(type)) return null;
+  const label =
+    typeof raw.label === "string" && raw.label.trim()
+      ? raw.label.trim()
+      : typeof raw.title === "string" && raw.title.trim()
+        ? raw.title.trim()
+        : labelForGoalType(type);
+  const targetAmount = Number(raw.targetAmount);
+  const targetYear = Number(raw.targetYear);
+  if (!Number.isFinite(targetAmount) || targetAmount <= 0) return null;
+  if (!Number.isFinite(targetYear) || targetYear < 1900 || targetYear > 2200) return null;
+  return {
+    type,
+    label,
+    targetAmount,
+    targetYear,
+    emoji: raw.emoji === undefined || raw.emoji === null ? null : raw.emoji,
+  };
+}
+
+/**
+ * Build the persisted user goal from full quiz option indices (signup or FinPilot onboarding).
+ * Uses goal choice, timeline (target year), and amount tier (target size).
+ * @param {number[]} optionIndices
+ */
+/**
+ * Override quiz-derived amounts with user-entered targets (signup / onboarding refine).
+ * @param {{ type: string, label: string, targetAmount: number, targetYear: number, emoji?: null }} goal
+ * @param {number} targetAmount
+ * @param {number} targetYear
+ */
+export function mergeGoalWithTargets(goal, targetAmount, targetYear) {
+  if (!goal || typeof goal !== "object") return null;
+  const amt = Number(targetAmount);
+  const yr = Number(targetYear);
+  if (!Number.isFinite(amt) || amt <= 0) return null;
+  if (!Number.isFinite(yr) || yr < 1900 || yr > 2200) return null;
+  return normalizeStoredUserGoal({
+    type: goal.type,
+    label: typeof goal.label === "string" ? goal.label : labelForGoalType(goal.type),
+    targetAmount: Math.round(amt),
+    targetYear: Math.round(yr),
+    emoji: goal.emoji === undefined || goal.emoji === null ? null : goal.emoji,
+  });
+}
+
+export function buildNestEggUserGoal(optionIndices) {
+  if (!Array.isArray(optionIndices) || optionIndices.length < SIGNUP_QUIZ_QUESTIONS.length) {
+    return null;
+  }
+  const goalIdx = optionIndices[0];
+  if (!Number.isInteger(goalIdx) || goalIdx < 0 || goalIdx >= GOAL_TYPES_BY_INDEX.length) {
+    return null;
+  }
+  const type = GOAL_TYPES_BY_INDEX[goalIdx];
+  const label = SIGNUP_QUIZ_QUESTIONS[0].options[goalIdx]?.label ?? labelForGoalType(type);
+
+  const timelineIdx = optionIndices[1];
+  const yearDelta =
+    Number.isInteger(timelineIdx) && timelineIdx >= 0 && timelineIdx < TIMELINE_YEARS_FROM_NOW.length
+      ? TIMELINE_YEARS_FROM_NOW[timelineIdx]
+      : 8;
+  const targetYear = new Date().getFullYear() + yearDelta;
+
+  const amountIdx = optionIndices[3];
+  const tierMult =
+    Number.isInteger(amountIdx) && amountIdx >= 0 && amountIdx < AMOUNT_TIER_MULTIPLIER.length
+      ? AMOUNT_TIER_MULTIPLIER[amountIdx]
+      : 1;
+  const targetAmount = Math.round(GOAL_BASE_AMOUNTS[type] * tierMult);
+
+  return {
+    type,
+    label,
+    targetAmount,
+    targetYear,
+    emoji: null,
+  };
 }
 
 /** Persisted bundle keys align with AppContext profileStorageKey JSON. */
 export function buildSignupProfilePayload(optionIndices, quizAnswersSnapshot) {
   const score = signupQuizScore(optionIndices);
   const finPilotRiskProfile = finPilotRiskFromQuizScore(score);
-  const goalIdx = optionIndices[0];
-  const goal = goalRecord(goalIdx);
+  const goal = buildNestEggUserGoal(optionIndices);
   const minScore = 6;
   const maxScore = 22;
   const riskScore = Math.round(

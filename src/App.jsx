@@ -1,20 +1,24 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import DashboardGate from "./components/DashboardGate.jsx";
 import DemoModePill from "./components/DemoModePill.jsx";
+import LinkAccountsGate from "./components/LinkAccountsGate.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import LinkAccounts from "./pages/LinkAccounts.jsx";
+import OnboardingGoalPage from "./pages/OnboardingGoalPage.jsx";
+import OnboardingQuizPage from "./pages/OnboardingQuizPage.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import { AppProvider, useAuth } from "./store/AppContext.jsx";
 import FinPilot from "./uploaded/finpilot.jsx";
 
 /**
- * Single authenticated surface: FinPilot at `/`.
- * Legacy paths redirect here so bookmarks still work.
+ * In-app onboarding order (protected):
+ *   `/` (risk profiler quiz) → `/goal` (targets) → `/link-accounts` (optional linking) → `/dashboard`.
+ * Sign-up may go straight to `/link-accounts` after account creation when the quiz is completed there.
  */
 function AppRoutes() {
   const { currentUser } = useAuth();
   const sessionKey = currentUser?.email ?? "guest";
-
-  const redirectHome = <Navigate to="/" replace />;
 
   return (
     <>
@@ -26,21 +30,56 @@ function AppRoutes() {
           path="/"
           element={
             <ProtectedRoute>
-              <FinPilot />
+              <OnboardingQuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/goal"
+          element={
+            <ProtectedRoute>
+              <OnboardingGoalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/link-accounts"
+          element={
+            <ProtectedRoute>
+              <LinkAccountsGate>
+                <LinkAccounts />
+              </LinkAccountsGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardGate>
+                <FinPilot />
+              </DashboardGate>
             </ProtectedRoute>
           }
         />
 
-        <Route path="/dashboard" element={redirectHome} />
-        <Route path="/finpilot" element={redirectHome} />
-        <Route path="/goal" element={redirectHome} />
-        <Route path="/scenarios" element={redirectHome} />
-        <Route path="/impact" element={redirectHome} />
-        <Route path="/rebalance" element={redirectHome} />
-        <Route path="/decisions" element={redirectHome} />
-        <Route path="/settings" element={redirectHome} />
+        <Route path="/finpilot" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/scenarios" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/impact" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/rebalance" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/decisions" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <DashboardGate>
+                <FinPilot />
+              </DashboardGate>
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="*" element={redirectHome} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <DemoModePill />
     </>

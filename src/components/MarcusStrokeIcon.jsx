@@ -348,6 +348,23 @@ export function MarcusStrokeIcon({
           <path {...p} d="m4.93 4.93 14.14 14.14" />
         </svg>
       );
+    case "gear":
+      return (
+        <svg {...props}>
+          <circle {...p} cx="12" cy="12" r="3" />
+          <path
+            {...p}
+            d="M12 1v2.5M12 20.5V23M4.22 4.22l1.77 1.77M17.99 17.99l1.79 1.79M1 12h2.5M20.5 12H23M4.22 19.78l1.77-1.77M17.99 6.01l1.79-1.79"
+          />
+        </svg>
+      );
+    case "lock":
+      return (
+        <svg {...props}>
+          <rect {...p} x="5" y="11" width="14" height="11" rx="2" />
+          <path {...p} d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </svg>
+      );
     default:
       return (
         <svg {...props}>

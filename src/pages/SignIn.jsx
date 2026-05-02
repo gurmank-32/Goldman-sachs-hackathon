@@ -9,6 +9,7 @@ import {
   SIGN_IN_ERROR_WRONG_PASSWORD,
   useAuth,
 } from "../store/AppContext.jsx";
+import { getPostAuthEntryPath } from "../utils/authRouting.js";
 
 function EyeIcon({ open }) {
   if (open) {
@@ -47,11 +48,6 @@ function EyeIcon({ open }) {
   );
 }
 
-/** Always land on FinPilot home (`/`); it shows questions first until completed. */
-function postSignInPath() {
-  return "/";
-}
-
 export default function SignIn() {
   const navigate = useNavigate();
   const { signIn, isAuthenticated, isLoading, ensureDemoAccount } = useAuth();
@@ -66,7 +62,7 @@ export default function SignIn() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    navigate(postSignInPath(), { replace: true });
+    navigate(getPostAuthEntryPath(), { replace: true });
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -86,7 +82,7 @@ export default function SignIn() {
     dismissBannerAndTimers();
     try {
       await signIn(email, password);
-      navigate(postSignInPath(), { replace: true });
+      navigate(getPostAuthEntryPath(), { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === SIGN_IN_ERROR_WRONG_PASSWORD) {
@@ -107,7 +103,7 @@ export default function SignIn() {
     setPassword(DEMO_ACCOUNT_PASSWORD);
     try {
       await signIn(DEMO_ACCOUNT_EMAIL, DEMO_ACCOUNT_PASSWORD);
-      navigate("/", { replace: true });
+      navigate(getPostAuthEntryPath(), { replace: true });
     } catch {
       setBanner("wrong_password");
     }

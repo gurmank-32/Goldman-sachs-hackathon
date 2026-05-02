@@ -53,4 +53,32 @@ export async function askAssistant(question, context = "", history = []) {
   return data.answer.trim();
 }
 
+/**
+ * GET /api/quote?symbol=AAPL — latest price via yfinance (backend).
+ * @param {string} symbol
+ * @returns {Promise<{ symbol: string, name: string, price: number, dayChangePct?: number }>}
+ */
+export async function fetchYFinanceQuote(symbol) {
+  const sym = String(symbol ?? "").trim();
+  if (!sym) {
+    throw new Error("Enter a ticker symbol to fetch a price.");
+  }
+  const res = await fetch(
+    `${BASE_URL}/api/quote?symbol=${encodeURIComponent(sym)}`,
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    const msg =
+      data.error ||
+      data.message ||
+      `Could not fetch quote for ${sym} (${res.status})`;
+    throw new Error(msg);
+  }
+  const q = data.quote;
+  if (!q || typeof q.price !== "number") {
+    throw new Error("Invalid quote response");
+  }
+  return q;
+}
+
 export { BASE_URL };
